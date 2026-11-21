@@ -10,8 +10,9 @@ from uuid import uuid4
 from .http_client import http_scope
 from .publication import atomic_write_json
 from .snapshots import REQUIRED, read_resources, export_snapshot
-from .tropical_contract import (MODELS_FILE, MODELS_INDEX_PATH, OFFICIAL_INDEX_PATH, STORM_FILE,
-                                validate_models_index, validate_official_index)
+from .tropical_contract import (ENSEMBLE_FILE, ENSEMBLE_INDEX_PATH, MODELS_FILE, MODELS_INDEX_PATH,
+                                OFFICIAL_INDEX_PATH, STORM_FILE, validate_ensemble_index, validate_models_index,
+                                validate_official_index)
 from .update_runner import FileLock
 
 
@@ -76,9 +77,13 @@ def _prune_prefix(candidate, index_path, validate, folder, pattern, keep):
             path.unlink()
             pruned.append(name)
     for name in pruned:
+        # Only now-empty directories between the file and ``folder``: storms/{id}/
+        # (and, for the ensemble, storms/{id}/{cycle}/). ``folder`` itself stays.
         directory = (candidate / name).parent
-        if directory.parent == folder and directory.is_dir() and not any(directory.iterdir()):
-            directory.rmdir()  # Only the now-empty storms/{id}/ itself.
+        while directory != folder and folder in directory.parents and directory.is_dir() \
+                and not any(directory.iterdir()):
+            directory.rmdir()
+            directory = directory.parent
     return pruned
 
 
@@ -89,7 +94,8 @@ def _prune_tropical(candidate):
     is not in the official index. Models (S8): ``tropical/models/storms/{id}/{cycle}.json``
     whose (system, cycle) is not in the models index. Each prefix is judged by its
     own index only; a missing or invalid index removes nothing under that prefix.
-    The ensemble prefix joins in S9.
+    Ensemble (S9): ``tropical/ensemble/storms/{id}/{cycle}/{model}.json`` whose
+    (system, cycle, model) is not in the ensemble index.
     """
     official = _prune_prefix(
         candidate, OFFICIAL_INDEX_PATH, validate_official_index, 'tropical/official/storms', STORM_FILE,
@@ -98,7 +104,11 @@ def _prune_tropical(candidate):
         candidate, MODELS_INDEX_PATH, validate_models_index, 'tropical/models/storms', MODELS_FILE,
         lambda match, index: any(item['cycle'] == match[2]
                                  for item in index['storms'].get(match[1], {}).get('cycles', [])))
-    return official + models
+    ensemble = _prune_prefix(
+        candidate, ENSEMBLE_INDEX_PATH, validate_ensemble_index, 'tropical/ensemble/storms', ENSEMBLE_FILE,
+        lambda match, index: any(item['cycle'] == match[2] and match[3] in item['models']
+                                 for item in index['storms'].get(match[1], {}).get('cycles', [])))
+    return official + models + ensemble
 
 
 def run_candidate(products, seed_data, store, update, *, allow_empty=False, history_today=None,

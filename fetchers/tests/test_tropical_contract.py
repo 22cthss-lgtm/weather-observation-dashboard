@@ -208,7 +208,8 @@ class WhitelistTests(unittest.TestCase):
         self.assertEqual(len(IMAGE_TYPES), 12)
         self.assertEqual(len(REQUIRED), 14)
         for name in ('tropical/index.json', 'tropical/official/index.json.bak', 'tropical/official/x.json',
-                     'tropical/ensemble/index.json',  # S9; tropical/models/ is allowed since S8
+                     'tropical/ensemble/x.json',  # models (S8) and ensemble (S9) only by their rules
+                     'tropical/ensemble/storms/2026-jma-tc2638/2026111100.json',
                      'tropical/official/../official/index.json'):
             self.assertFalse(allowed_path(name), name)
 

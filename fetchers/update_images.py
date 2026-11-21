@@ -14,6 +14,7 @@ from src.current_day import CURRENT_PRODUCTS, update_current_product
 from src.rainfall_rankings import update_rankings
 from src.tropical_official import update_tropical_official
 from src.tropical_models import update_tropical_models
+from src.tropical_ensemble import update_tropical_ensemble
 from src.update_runner import UpdateInProgress, run_batch
 
 
@@ -39,6 +40,7 @@ GROUP_PRODUCTS = {
 TROPICAL_TASKS = {
     'tropical_official': update_tropical_official,
     'tropical_models': update_tropical_models,
+    'tropical_ensemble': update_tropical_ensemble,
 }
 
 

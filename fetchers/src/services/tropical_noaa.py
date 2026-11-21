@@ -12,12 +12,26 @@ BASE = 'https://nomads.ncep.noaa.gov/pub/data/nccf/com'
 # model -> (ens_tracker system directory, file code). Only the main files:
 # never the ``p`` variants, ``avnx`` or the ensemble means (design.md 1.9, 7.7).
 DETERMINISTIC = {'gfs': ('gfs', 'avno'), 'aigfs': ('aigfs', 'agfs')}
+# Ensemble -> (system directory, member file codes in request order). The first
+# code is the probe (design.md 5.4). Only the main member files: never the
+# means (``aemn``, ``aimn``) or the ``p`` variants (design.md 1.9).
+ENSEMBLE = {'gefs': ('gefs', ('ac00',) + tuple(f'ap{n:02d}' for n in range(1, 31))),
+            'aigefs': ('aigefs', tuple(f'a{n:03d}' for n in range(0, 31)))}
 BASIN_SUFFIX = {'WP': 'W', 'CP': 'C', 'EP': 'E'}
 MAX_TAU_H = 480
 
 
 def track_url(model, cycle):
     system, code = DETERMINISTIC[model]
+    day, hour = cycle[:8], cycle[8:]
+    return f'{BASE}/ens_tracker/prod/{system}.{day}/{hour}/tctrack/{code}.t{hour}z.cyclone.trackatcfunix'
+
+
+def member_url(model, code, cycle):
+    """One ensemble member file (design.md 5.4 file names [實測])."""
+    system, codes = ENSEMBLE[model]
+    if code not in codes:
+        raise ValueError('Unknown ensemble member code')
     day, hour = cycle[:8], cycle[8:]
     return f'{BASE}/ens_tracker/prod/{system}.{day}/{hour}/tctrack/{code}.t{hour}z.cyclone.trackatcfunix'
 
@@ -59,7 +73,12 @@ def parse_atcf(body, model, cycle):
     position, pressure and maximum wind are kept. Rows of another model code or
     cycle are ignored; a tau that is not a multiple of 6 or beyond 480 is dropped.
     """
-    code = DETERMINISTIC[model][1].upper()
+    return parse_atcf_code(body, DETERMINISTIC[model][1], cycle)
+
+
+def parse_atcf_code(body, code, cycle):
+    """``parse_atcf`` for one file code (deterministic or ensemble member, e.g. ``ap01``)."""
+    code = code.upper()
     text = body.decode('ascii')
     tracks = {}
     for line in text.splitlines():

@@ -13,6 +13,8 @@ from .tropical_common import clean_name, normalize_lat, normalize_lon
 BASE = 'https://data.ecmwf.int/forecasts'
 # model -> (model directory, stream) for the deterministic tf products.
 DETERMINISTIC = {'ifs': ('ifs', 'oper'), 'aifs': ('aifs-single', 'oper')}
+ENSEMBLE = {'ifs-ens': ('ifs', 'enfo'), 'aifs-ens': ('aifs-ens', 'enfo')}
+PRODUCTS = {**DETERMINISTIC, **ENSEMBLE}
 STORM_ID = re.compile(r'([0-9]{2})([A-Z])')
 GENERATED_FROM = 70  # [實測] model-generated systems; the boundary is [待驗證] (design.md 12 #7)
 MAX_TAU_H = 480
@@ -26,12 +28,13 @@ CENTRE, MAX_WIND_LOCATION, OWN_ANALYSIS = 1, 3, 5
 
 
 def step_hours(model, cycle):
-    """IFS: 360 h at 00/12Z, 144 h at 06/18Z; AIFS: 360 h every cycle [實測]."""
-    return 360 if model == 'aifs' or cycle[8:] in ('00', '12') else 144
+    """IFS (oper and enfo): 360 h at 00/12Z, 144 h at 06/18Z; AIFS (single and
+    ens): 360 h every cycle [實測] (design.md 5.4)."""
+    return 360 if model in ('aifs', 'aifs-ens') or cycle[8:] in ('00', '12') else 144
 
 
 def track_url(model, cycle):
-    directory, stream = DETERMINISTIC[model]
+    directory, stream = PRODUCTS[model]
     day, hour = cycle[:8], cycle[8:]
     return (f'{BASE}/{day}/{hour}z/{directory}/0p25/{stream}/'
             f'{cycle}0000-{step_hours(model, cycle)}h-{stream}-tf.bufr')

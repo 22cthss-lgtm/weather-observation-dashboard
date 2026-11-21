@@ -593,3 +593,171 @@ def validate_models_file(path, data):
     except Exception:  # noqa: BLE001 - only ValueError may leave a tropical validator.
         raise ValueError('Invalid tropical models file') from None
     return data
+
+
+# --- tropical/ensemble/ (design.md 1.8, 1.9, 6.1, 11g; S9) --------------------
+
+ENSEMBLE_INDEX_PATH = 'tropical/ensemble/index.json'
+ENSEMBLES = ('aifs-ens', 'aigefs', 'gefs', 'ifs-ens')  # alphabetical: the order of every list
+ENSEMBLE_PROVIDER = {'gefs': 'NOAA', 'aigefs': 'NOAA', 'ifs-ens': 'ECMWF', 'aifs-ens': 'ECMWF'}
+# Member files (NOAA) or subsets (ECMWF) each ensemble should have [實測, design.md 5.4].
+MEMBERS_EXPECTED = {'gefs': 31, 'aigefs': 31, 'ifs-ens': 51, 'aifs-ens': 52}
+MEMBER_ID = {
+    'gefs': re.compile(r'ac00|ap(?:0[1-9]|[12][0-9]|30)'),
+    'aigefs': re.compile(r'a0(?:[0-2][0-9]|30)'),
+    'ifs-ens': re.compile(r'[1-9]|[1-4][0-9]|5[01]'),
+    'aifs-ens': re.compile(r'[1-9]|[1-4][0-9]|5[0-2]'),
+}
+ENSEMBLE_FILE = re.compile(r'tropical/ensemble/storms/([0-9]{4}-(?:jma|jtwc|cwa)-[a-z0-9]{1,8})/'
+                           r'([0-9]{8}(?:00|06|12|18))/(gefs|aigefs|ifs-ens|aifs-ens)\.json')
+MAX_ENSEMBLE_CHECKED = 4
+MAX_ENSEMBLE_CYCLES = 2
+MAX_MEMBERS = 60
+
+
+def member_order(name):
+    """Sort key of 1.9 ``members``: NOAA codes as text, ECMWF member numbers as numbers (11g)."""
+    return (0, int(name), '') if name.isdigit() else (1, 0, name)
+
+
+def _sources(value):
+    _exact(value, MODEL_SOURCES)
+    for source in MODEL_SOURCES:
+        item = value[source]
+        _exact(item, ('state', 'error_code'))
+        if type(item['state']) is not str or item['state'] not in SOURCE_STATES:
+            _fail('Invalid source state')
+        code = item['error_code']
+        if item['state'] == 'failed':
+            if type(code) is not str or code not in SAFE_ERROR_CODES:
+                _fail('Failed source needs a safe error code')
+        elif code is not None:
+            _fail('Only a failed source has an error code')
+
+
+def _ensemble_index(data):
+    _exact(data, ('schema_version', 'fetched_at', 'sources', 'match_basis', 'checked', 'storms'))
+    if type(data['schema_version']) is not int or data['schema_version'] != 1:
+        _fail('Unsupported tropical schema version')
+    parse_stamp(data['fetched_at'])
+    _sources(data['sources'])
+    basis = data['match_basis']
+    if (type(basis) is not list or len(basis) > MAX_STORMS
+            or any(type(item) is not str or not MATCH_BASIS.fullmatch(item) for item in basis)
+            or basis != sorted(set(basis))):
+        _fail('Invalid match_basis')
+    checked = data['checked']
+    if type(checked) is not dict or len(checked) > MAX_ENSEMBLE_CHECKED:
+        _fail('Invalid checked cycles')
+    for cycle, models in checked.items():
+        cycle_time(cycle)
+        if (type(models) is not dict or not models
+                or any(type(m) is not str or m not in ENSEMBLES for m in models)):
+            _fail('Invalid checked ensembles')
+        for model, value in models.items():
+            _exact(value, ('complete', 'missing_files'))
+            if type(value['complete']) is not bool:
+                _fail('Invalid complete flag')
+            missing = value['missing_files']
+            if type(missing) is not list or any(type(code) is not str for code in missing) \
+                    or missing != sorted(set(missing)):
+                _fail('Invalid missing_files')
+            # Only NOAA has member files; an ECMWF ensemble is one file (1.8).
+            if ENSEMBLE_PROVIDER[model] != 'NOAA' and missing:
+                _fail('Only NOAA ensembles list missing files')
+            if any(not MEMBER_ID[model].fullmatch(code) for code in missing):
+                _fail('Invalid missing file code')
+    storms = data['storms']
+    if type(storms) is not dict or len(storms) > MAX_STORMS:
+        _fail('Invalid ensemble storms')
+    for identity, storm in storms.items():
+        if type(identity) is not str or not CYCLONE_ID.fullmatch(identity):
+            _fail('Invalid cyclone_id')
+        _exact(storm, ('cycles',))
+        cycles = storm['cycles']
+        if type(cycles) is not list or not 1 <= len(cycles) <= MAX_ENSEMBLE_CYCLES:
+            _fail('Invalid ensemble cycles')
+        previous = None
+        for item in cycles:
+            _exact(item, ('cycle', 'models'))
+            moment = cycle_time(item['cycle'])
+            if previous is not None and moment <= previous:
+                _fail('Ensemble cycles must increase')
+            previous = moment
+            models = item['models']
+            if (type(models) is not dict or not models
+                    or any(type(m) is not str or m not in ENSEMBLES for m in models)
+                    or list(models) != sorted(models)):
+                _fail('Invalid ensemble models')
+            for model, value in models.items():
+                _exact(value, ('members', 'members_expected'))
+                if type(value['members_expected']) is not int or value['members_expected'] != MEMBERS_EXPECTED[model]:
+                    _fail('Invalid members_expected')
+                count = value['members']
+                if type(count) is not int or not 1 <= count <= min(MAX_MEMBERS, MEMBERS_EXPECTED[model]):
+                    _fail('Invalid member count')
+
+
+def validate_ensemble_index(data):
+    """Validate ``tropical/ensemble/index.json``; raises only ``ValueError``."""
+    try:
+        _ensemble_index(data)
+    except Exception:  # noqa: BLE001 - only ValueError may leave a tropical validator.
+        raise ValueError('Invalid tropical ensemble index') from None
+    return data
+
+
+def _ensemble_file(path, data):
+    matched = ENSEMBLE_FILE.fullmatch(path) if type(path) is str else None
+    if not matched:
+        _fail('Not a tropical ensemble file path')
+    _exact(data, ('schema_version', 'cyclone_id', 'model', 'cycle', 'init_time', 'fetched_at', 'provider',
+                  'source_id', 'match', 'wind_unit', 'members_expected', 'members'))
+    if type(data['schema_version']) is not int or data['schema_version'] != 1:
+        _fail('Unsupported tropical schema version')
+    if data['cyclone_id'] != matched[1] or data['cycle'] != matched[2] or data['model'] != matched[3]:
+        _fail('cyclone_id, cycle or model does not match the path')
+    model = data['model']
+    if parse_stamp(data['init_time']) != cycle_time(data['cycle']):
+        _fail('init_time does not match the cycle')
+    parse_stamp(data['fetched_at'])
+    provider = ENSEMBLE_PROVIDER[model]
+    if data['provider'] != provider or data['wind_unit'] != WIND_UNIT[provider]:
+        _fail('Invalid provider or wind unit')
+    if type(data['source_id']) is not str or not SOURCE_ID[provider].fullmatch(data['source_id']):
+        _fail('Invalid source_id')
+    if type(data['match']) is not str or data['match'] not in MODEL_MATCH[provider]:
+        _fail('Invalid ensemble match')
+    if type(data['members_expected']) is not int or data['members_expected'] != MEMBERS_EXPECTED[model]:
+        _fail('Invalid members_expected')
+    members = data['members']
+    if type(members) is not list or not 1 <= len(members) <= min(MAX_MEMBERS, MEMBERS_EXPECTED[model]):
+        _fail('Invalid members')
+    names = []
+    for member in members:
+        _exact(member, ('m', 'type', 'track'))
+        if type(member['m']) is not str or not MEMBER_ID[model].fullmatch(member['m']):
+            _fail('Invalid member id')
+        kind = member['type']
+        if provider == 'NOAA':
+            if kind is not None:
+                _fail('NOAA members have no type')
+        elif kind is not None and (type(kind) is not int or not 0 <= kind <= 255):
+            _fail('Invalid ensembleForecastType')
+        _track(member['track'])
+        names.append(member['m'])
+    if names != sorted(set(names), key=member_order):
+        _fail('Members must be unique and sorted')
+
+
+def is_ensemble_file(path):
+    return type(path) is str and ENSEMBLE_FILE.fullmatch(path) is not None
+
+
+def validate_ensemble_file(path, data):
+    """Validate ``tropical/ensemble/storms/{id}/{cycle}/{model}.json`` (compact layout)."""
+    try:
+        _ensemble_file(path, data)
+    except Exception:  # noqa: BLE001 - only ValueError may leave a tropical validator.
+        raise ValueError('Invalid tropical ensemble file') from None
+    return data

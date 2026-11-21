@@ -136,8 +136,8 @@ class BelongsTests(unittest.TestCase):
 
     def test_task_is_last_and_matches_the_design_schedule(self):
         tasks = default_tasks()
-        # Official before models: the models task reads the official index (design.md 5.1).
-        self.assertEqual(list(tasks)[-2:], ['tropical_official', 'tropical_models'])
+        # Official, models, ensemble: the later ones read the earlier indexes (design.md 5.1).
+        self.assertEqual(list(tasks)[-3:], ['tropical_official', 'tropical_models', 'tropical_ensemble'])
         self.assertEqual(len(IMAGE_TASKS), 13)
         self.assertEqual(tasks['tropical_official'], {'mode': 'interval', 'interval_seconds': 1800,
                                                       'retry_delays_seconds': [600, 1200, 2400, 3600]})
@@ -278,11 +278,11 @@ class IsolationTests(unittest.TestCase):
             self.assertIsNone(same['state_warning'])
             self.assertEqual(same['checks']['radar']['state'], 'not_due')
             # ...and is rejected once the task set includes the tropical tasks: everything is due once
-            # (S8 adds tropical_models, design.md 5.1).
+            # (S8 adds tropical_models, S9 tropical_ensemble, design.md 5.1).
             update = make_update(tropical_ok())
             after = prepare(root, 'after', update, state=old_state, now=NOW + timedelta(minutes=1), sha=sha)
             self.assertEqual(after['state_warning'], 'corrupt')
-            self.assertEqual(update.calls, [*IMAGE_TASKS, 'tropical_official', 'tropical_models'])
+            self.assertEqual(update.calls, [*IMAGE_TASKS, 'tropical_official', 'tropical_models', 'tropical_ensemble'])
             with self.assertRaises(ValueError):
                 validate_state(json.dumps(old_state).encode(), old_state['content_id'], NOW + timedelta(minutes=1))
             validate_state(json.dumps(after['scheduler_state']).encode(), after['content_id'], NOW + timedelta(minutes=2))
@@ -422,7 +422,8 @@ class DeploymentDecisionTests(unittest.TestCase):
                                 images = {'sst': sst, 'radar': radar}
                                 products = {'sst': image_product}
                                 expected = self.decide(changed, images, products)
-                                actual = self.decide(changed, dict(images, tropical_official=tropical, tropical_models=tropical),
+                                actual = self.decide(changed, dict(images, tropical_official=tropical, tropical_models=tropical,
+                                                                     tropical_ensemble=tropical),
                                                      dict(products, tropical_official=tropical_product))
                                 self.assertEqual(actual, expected)
 
@@ -522,7 +523,7 @@ class EntryPointTests(unittest.TestCase):
     def test_unknown_names_still_fail_and_images_are_not_touched(self):
         import update_images
         with self.assertRaises(KeyError):
-            update_images.update_image('tropical_ensemble', Path('x/images'))  # S9
+            update_images.update_image('tropical_imagery', Path('x/images'))  # not a task
 
     def test_tropical_tasks_are_not_enumerated_as_image_products(self):
         import update_images
@@ -543,10 +544,11 @@ class EntryPointTests(unittest.TestCase):
             self.assertEqual(update_images.main(['--output-root', output]), 0)
             self.assertEqual(update_images.main(['tropical_official', '--output-root', output]), 0)
             with self.assertRaises(SystemExit), redirect_stderr(io.StringIO()):
-                update_images.main(['tropical_ensemble', '--output-root', output])
+                update_images.main(['tropical_imagery', '--output-root', output])
             self.assertEqual(update_images.main(['tropical_models', '--output-root', output]), 0)
+            self.assertEqual(update_images.main(['tropical_ensemble', '--output-root', output]), 0)  # S9
         self.assertEqual(set(ran[0]), set(IMAGE_TASKS))
-        self.assertEqual(ran[1:], [['tropical_official'], ['tropical_models']])
+        self.assertEqual(ran[1:], [['tropical_official'], ['tropical_models'], ['tropical_ensemble']])
 
 
 if __name__ == '__main__':

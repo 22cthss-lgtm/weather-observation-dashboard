@@ -27,8 +27,11 @@
 | `ecmwf_ifs_2026111012_oper.bufr` | `https://data.ecmwf.int/forecasts/20261110/12z/ifs/0p25/oper/20261110120000-360h-oper-tf.bufr` | 2026-11-11 11:29（S2）| 否（38W CEMPAKA、04C PENA 與 13 個 70 號以上的系統）|
 | `ecmwf_aifs_2026111012_oper.bufr` | `https://data.ecmwf.int/forecasts/20261110/12z/aifs-single/0p25/oper/20261110120000-360h-oper-tf.bufr` | 2026-11-11 11:29（S2）| 否 |
 | `ecmwf_ifs_2026111118_oper.bufr` | `https://data.ecmwf.int/forecasts/20261111/18z/ifs/0p25/oper/20261111180000-144h-oper-tf.bufr` | 2026-11-12 10:25（S2 補測）| 否（31W CEMPAKA、04C PENA 都只有分析、沒有預報步）|
+| `noaa_gefs_2026111100_members.json` | `https://nomads.ncep.noaa.gov/pub/data/nccf/com/ens_tracker/prod/gefs.20261111/00/tctrack/{code}.t00z.cyclone.trackatcfunix`，`{code}` 為 `ac00`、`ap01`–`ap30` | 2026-11-11 11:27–11:28（S2）| 否：31 個成員檔的回應本體原樣放進一個 JSON（`files` 的鍵為檔名代碼），沒有平均檔與 `p` 檔（S9）|
+| `noaa_aigefs_2026111106_members.json` | 同上，`aigefs.20261111/06`，`{code}` 為 `a000`、`a001`、`a002` | 2026-11-11 11:26（S2）| **只取 3 個成員**（S9）|
+| `ecmwf_ifs_2026111018_enfo.bufr` | `https://data.ecmwf.int/forecasts/20261110/18z/ifs/0p25/enfo/20261110180000-144h-enfo-tf.bufr` | 2026-11-11 11:29（S2）| 否（298,472 bytes，S2 保存的最小 Ensemble 檔；只有 38W CEMPAKA，50 個成員有路徑）（S9）|
 
-NOAA、ECMWF 的檔案只保存回應本體（HTTP 標頭與 CDN 資訊沒有放入）。S8 以 ecCodes（S2 的本機 venv，不是專案相依）逐值比對三個 BUFR 檔中保留下來的 4 條路徑（位置、氣壓、風速，共 35 點），與 `pybufrkit` 的解碼結果完全相同。
+NOAA、ECMWF 的檔案只保存回應本體（HTTP 標頭與 CDN 資訊沒有放入）。S8 以 ecCodes（S2 的本機 venv，不是專案相依）逐值比對三個 BUFR 檔中保留下來的 4 條路徑（位置、氣壓、風速，共 35 點），與 `pybufrkit` 的解碼結果完全相同。S9 以同一個 ecCodes 環境核對 `ecmwf_ifs_2026111018_enfo.bufr`：50 個成員保留下來的 329 點，每一點的位置、氣壓（Pa／100）與 10 m 風速都出現在該成員 subset 的 ecCodes 值中（0 筆不符；以「值存在於該 subset」核對，不是逐步驟對位）。
 
 CWA 在 2026-11-15 17:43 的無系統回應與 `cwa_datastore_cempaka.json` **逐位元相同**（CEMPAKA 消散四天後仍原樣提供），所以沒有另存一份。
 

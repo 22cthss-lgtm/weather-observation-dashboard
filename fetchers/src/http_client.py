@@ -47,9 +47,13 @@ def source_limits(name):
 
 class HttpPolicy:
     def __init__(self, *, max_requests=None, max_seconds=None, wait=time.sleep,
-                 clock=time.monotonic, jitter=lambda: random.uniform(0, .5)):
+                 clock=time.monotonic, jitter=lambda: random.uniform(0, .5), window_start=None):
+        """``window_start`` (a ``clock`` value): every source window starts there
+        instead of at that source's first request, so ``max_seconds`` bounds the
+        whole scope (tropical_ensemble, design.md 11g). None keeps the old rule."""
         self.max_requests, self.max_seconds = max_requests, max_seconds
         self.wait, self.clock, self.jitter = wait, clock, jitter
+        self.window_start = window_start
         self.sources = {}
         self.lock = threading.Lock()
 
@@ -57,7 +61,8 @@ class HttpPolicy:
         name = source_name(url)
         with self.lock:
             now = self.clock()
-            state = self.sources.setdefault(name, {'start': now, 'count': 0, 'blocked': False})
+            start = now if self.window_start is None else self.window_start
+            state = self.sources.setdefault(name, {'start': start, 'count': 0, 'blocked': False})
             seconds = self.max_seconds or source_limits(name)[1]
             requests_limit = self.max_requests or source_limits(name)[0]
             remaining = seconds - (now - state['start'])
