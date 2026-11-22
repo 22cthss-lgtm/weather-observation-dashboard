@@ -1,4 +1,5 @@
-// Leaflet map for official tracks and switched-on model tracks (design.md 7.2, 7.3, 11f). Loaded lazily with the Forecast tab only.
+// Leaflet map for official tracks and switched-on model and Ensemble tracks (design.md 7.2, 7.3, 11f, 11h).
+// Loaded lazily with the Forecast tab only.
 // No tile layer and no external request: the land is a bundled Natural Earth GeoJSON, already in
 // 0-360 longitudes. It draws only what tracks.js drawables() returns.
 import { useEffect, useRef } from "react";
@@ -39,6 +40,22 @@ const SafeMap = L.Map.extend({
     L.Map.prototype._onZoomTransitionEnd.call(this);
   },
 });
+
+// Ensemble member lines are drawn 1 px wide; a few pixels of click tolerance keep them clickable
+// without a second, invisible line per member (design.md 11h H4/H5).
+const MemberLine = L.Polyline.extend({
+  _clickTolerance() {
+    return 4;
+  },
+});
+
+// Areas first, then lines, then nodes, so nothing covers a clickable node. Ensemble lines sit under
+// the official and model lines; within them the member looked at on its own is drawn last.
+const ORDER = { radii: 0, circle: 1, ensembleLine: 2, ensembleDot: 2, line: 3, modelLine: 3, ensembleNode: 4, modelNode: 4, node: 5 };
+
+function drawOrder(left, right) {
+  return ORDER[left.type] - ORDER[right.type] || Number(Boolean(left.focused)) - Number(Boolean(right.focused));
+}
 
 // Land under the grid under the tracks; each pane has its own canvas.
 function addPane(map, name, zIndex) {
@@ -84,13 +101,15 @@ function drawGrid(map) {
   }
 }
 
-export default function TrackMap({ items, colors, onSelectNode, ready = true }) {
+export default function TrackMap({ items, colors, onSelectNode, onSelectMember = () => {}, ready = true }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const tracksLayer = useRef(null);
   const fitted = useRef(false);
   const selectRef = useRef(onSelectNode);
   selectRef.current = onSelectNode;
+  const memberRef = useRef(onSelectMember);
+  memberRef.current = onSelectMember;
 
   useEffect(() => {
     const map = new SafeMap(container.current, {
@@ -139,13 +158,32 @@ export default function TrackMap({ items, colors, onSelectNode, ready = true }) 
     if (!map || !layer) return;
     layer.clearLayers();
     const bounds = [];
-    // Areas first, then lines, then nodes, so nothing covers a clickable node. Model nodes sit
-    // under the official ones. Model items are never added to the fit bounds (design.md 11f F6).
-    const order = { radii: 0, circle: 1, line: 2, modelLine: 2, modelNode: 3, node: 4 };
-    const sorted = [...items].sort((left, right) => order[left.type] - order[right.type]);
+    // Model and Ensemble items are never added to the fit bounds (design.md 11f F6, 11h H4).
+    const sorted = [...items].sort(drawOrder);
     for (const item of sorted) {
       const color = colors[item.model ?? item.agency];
-      if (item.type === "modelLine") {
+      if (item.type === "ensembleLine") {
+        new MemberLine(item.latlngs, {
+          color: item.focused ? "#111" : color,
+          weight: item.focused ? 2.5 : 1,
+          opacity: item.focused ? 1 : item.dimmed ? 0.2 : 0.55,
+          lineCap: "round",
+          lineJoin: "round",
+        }).on("click", () => memberRef.current(item.model, item.member)).addTo(layer);
+      } else if (item.type === "ensembleDot") {
+        L.circleMarker(item.latlng, {
+          radius: 2.5, stroke: false, fillColor: color, fillOpacity: item.dimmed ? 0.3 : 0.8,
+        }).on("click", () => memberRef.current(item.model, item.member)).addTo(layer);
+      } else if (item.type === "ensembleNode") {
+        const emphasis = item.selected || item.highlighted;
+        L.circleMarker(item.latlng, {
+          radius: emphasis ? 6 : 3,
+          color: emphasis ? "#111" : color,
+          weight: emphasis ? 3 : 1.5,
+          fillColor: "#fff",
+          fillOpacity: 1,
+        }).on("click", () => selectRef.current(item.nodeId)).addTo(layer);
+      } else if (item.type === "modelLine") {
         L.polyline(item.latlngs, { color, weight: 1.5, opacity: 0.9, dashArray: "1 5", lineCap: "round", interactive: false })
           .addTo(layer);
       } else if (item.type === "modelNode") {
@@ -192,5 +230,5 @@ export default function TrackMap({ items, colors, onSelectNode, ready = true }) 
     }
   }, [items, colors, ready]);
 
-  return <div ref={container} className="tc-map" role="region" aria-label="路徑地圖：官方路徑與已開啟的數值模式路徑（可拖曳與縮放）" />;
+  return <div ref={container} className="tc-map" role="region" aria-label="路徑地圖：官方路徑與已開啟的數值模式、Ensemble 路徑（可拖曳與縮放）" />;
 }

@@ -28,7 +28,7 @@ export const MODEL_COLORS = Object.fromEntries(MODELS.map(model => [model, MODEL
 
 export const MODEL_LEGEND = "數值模式原始輸出，非官方預報，亦非本站預報。";
 
-const CYCLE = /^[0-9]{8}(?:00|06|12|18)$/;
+export const CYCLE_PATTERN = /^[0-9]{8}(?:00|06|12|18)$/;
 
 export const MODELS_INDEX_PATH = "data/tropical/models/index.json";
 export const MODELS_INDEX_KEY = "models/index";
@@ -47,7 +47,7 @@ function finite(value) {
 
 /** Milliseconds for a YYYYMMDDHH cycle (HH 00/06/12/18), or null. */
 export function cycleTime(cycle) {
-  if (typeof cycle !== "string" || !CYCLE.test(cycle)) return null;
+  if (typeof cycle !== "string" || !CYCLE_PATTERN.test(cycle)) return null;
   const year = Number(cycle.slice(0, 4));
   const month = Number(cycle.slice(4, 6));
   const day = Number(cycle.slice(6, 8));
@@ -56,6 +56,16 @@ export function cycleTime(cycle) {
   const date = new Date(time);
   if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
   return time;
+}
+
+/**
+ * `cycle` query parameter of the Forecast tab (design.md 11h H3): a real YYYYMMDDHH cycle or null.
+ * `invalid` is true when the parameter is present but malformed, so the page can say it was ignored.
+ */
+export function parseCycleQuery(searchParams) {
+  const value = searchParams.get("cycle");
+  if (value === null) return { cycle: null, invalid: false };
+  return cycleTime(value) === null ? { cycle: null, invalid: true } : { cycle: value, invalid: false };
 }
 
 /** Contract stamp (YYYY-MM-DDTHH:MM:SSZ) for milliseconds. */
@@ -98,7 +108,27 @@ export function modelEntry(index, cycloneId) {
   return { status: "ok", cycle: latest.cycle, models };
 }
 
-function validTrack(track) {
+/**
+ * Every listed cycle of this storm, oldest first (design.md 1.6, 11h H3), for the cycle selector.
+ * @returns {status: "none"} | {status: "unavailable"} | {status: "ok", cycles: [{cycle, models}]}
+ */
+export function modelCycles(index, cycloneId) {
+  if (!Object.prototype.hasOwnProperty.call(index.storms, cycloneId)) return { status: "none" };
+  const entry = index.storms[cycloneId];
+  if (!isPlainObject(entry) || !Array.isArray(entry.cycles)) return { status: "unavailable" };
+  if (!entry.cycles.length) return { status: "none" };
+  const cycles = [];
+  for (const item of entry.cycles) {
+    if (!isPlainObject(item) || cycleTime(item.cycle) === null) return { status: "unavailable" };
+    if (cycles.some(known => known.cycle >= item.cycle)) return { status: "unavailable" }; // must increase
+    const models = Array.isArray(item.models) ? item.models.filter(model => MODELS.includes(model)) : [];
+    cycles.push({ cycle: item.cycle, models });
+  }
+  return { status: "ok", cycles };
+}
+
+/** The five-value track of design.md 1.7 (also used by the Ensemble members of 1.9). */
+export function validTrack(track) {
   if (!Array.isArray(track) || track.length < 1 || track.length > MAX_TRACK_POINTS) return false;
   let previous = -1;
   for (const point of track) {

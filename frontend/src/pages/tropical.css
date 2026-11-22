@@ -323,6 +323,27 @@
   border-style: dashed;
 }
 
+/* Ensemble layers and the cycle selector (design.md 11h). Selects stay inside narrow screens. */
+.tc-ensemble-row {
+  align-items: center;
+}
+
+.tc-ensemble-row .tc-check-note {
+  min-width: 0;
+}
+
+.tc-layers select {
+  max-width: 100%;
+  min-width: 0;
+  font: inherit;
+  padding: 2px 4px;
+}
+
+.tc-cycles .tc-check {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
 .tc-map {
   height: min(60vh, 520px);
   min-height: 280px;

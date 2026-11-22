@@ -235,7 +235,7 @@ test("wording: the model section and legends never call model output a forecast 
   expect(section.replace("非官方預報，亦非本站預報", "")).not.toMatch(/預報/);
   expect(text()).not.toMatch(/預測/);
   const footer = screen.getByRole("contentinfo");
-  expect(within(footer).getByText(/NOAA／NWS（數值模式 GFS、AIGFS）/)).toBeTruthy();
+  expect(within(footer).getByText(/NOAA／NWS（數值模式 GFS、AIGFS 與 Ensemble GEFS、AIGEFS）/)).toBeTruthy();
   expect(within(footer).getByText(/European Centre for Medium-Range Weather Forecasts \(ECMWF\)/)).toBeTruthy();
 });
 

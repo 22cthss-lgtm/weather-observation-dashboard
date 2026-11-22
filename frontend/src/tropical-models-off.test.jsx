@@ -5,8 +5,8 @@ import TropicalPage from "./pages/TropicalPage";
 import { NOW, makeIndex } from "./tropical/test-fixtures";
 import { cempakaAnalysis, cempakaForecast } from "./tropical/storm-test-fixtures";
 
-// VITE_TROPICAL_MODEL_LAYERS=off (design.md 7.7, 11f F1).
-vi.mock("./tropical/features", () => ({ MODEL_LAYERS_ENABLED: false }));
+// VITE_TROPICAL_MODEL_LAYERS=off and VITE_TROPICAL_ENSEMBLE_LAYERS=off (design.md 7.7, 11f F1, 11h H7).
+vi.mock("./tropical/features", () => ({ MODEL_LAYERS_ENABLED: false, ENSEMBLE_LAYERS_ENABLED: false }));
 vi.mock("./pages/tropical/TrackMap", () => ({
   default: ({ items }) => <div data-testid="map" data-items={JSON.stringify(items)} />,
 }));

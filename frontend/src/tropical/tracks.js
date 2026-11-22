@@ -100,9 +100,11 @@ export const ANALYSIS_KEY = "analysis";
  * Timeline (design.md 7.5, 9.4 S7): one tick per distinct valid_time that some agency really
  * forecast, plus a first "latest analysis" step whose entries keep each agency's own fix time.
  * `modelTracks` are the model tracks switched on (models.js enabledModelTracks).
+ * `memberTracks` are the Ensemble members chosen one at a time (design.md 11h H6); the members of
+ * an Ensemble shown all together add no tick.
  * No tick is interpolated and no node is moved to a tick it does not have.
  */
-export function buildTimeline(tracks, modelTracks = []) {
+export function buildTimeline(tracks, modelTracks = [], memberTracks = []) {
   const analysis = tracks.filter(track => track.fix).map(track => ({
     agency: track.agency, nodeId: track.fix.id, time: track.fix.time, tauH: null, initTime: null,
   }));
@@ -122,6 +124,15 @@ export function buildTimeline(tracks, modelTracks = []) {
       if (!byTime.has(point.time)) byTime.set(point.time, []);
       byTime.get(point.time).push({
         agency: null, model: track.model, nodeId: point.id, time: point.time, tauH: point.tauH, initTime: track.initTime,
+      });
+    }
+  }
+  for (const track of memberTracks) {
+    for (const point of track.points) {
+      if (!byTime.has(point.time)) byTime.set(point.time, []);
+      byTime.get(point.time).push({
+        agency: null, model: null, ensemble: track.model, member: track.member, nodeId: point.id, time: point.time,
+        tauH: point.tauH, initTime: track.initTime,
       });
     }
   }
@@ -198,8 +209,13 @@ export function radiiShapes(center, radii) {
  * What the map draws for the current toggles and timeline selection.
  * Each item carries plotted [lat, lon] pairs (lon already unwrapped).
  */
-export function drawables(tracks, toggles, selectedKey = null, selectedNodeId = null, modelTracks = []) {
-  const timeline = buildTimeline(tracks, modelTracks);
+/**
+ * `ensembleLines`: members of the Ensemble layers switched on, each {model, member, focused, dimmed,
+ * points}. A focused member (chosen one at a time) also gets its nodes and timeline ticks.
+ */
+export function drawables(tracks, toggles, selectedKey = null, selectedNodeId = null, modelTracks = [],
+  ensembleLines = []) {
+  const timeline = buildTimeline(tracks, modelTracks, ensembleLines.filter(line => line.focused));
   const highlighted = new Set(selectedKey === null ? [] : entriesAt(timeline, selectedKey).map(entry => entry.nodeId));
   const items = [];
   const at = item => [item.lat, item.plotLon];
@@ -250,6 +266,25 @@ export function drawables(tracks, toggles, selectedKey = null, selectedNodeId = 
     for (const point of track.points) {
       items.push({ type: "modelNode", layer: "model", model: track.model, nodeId: point.id, nodeKind: "model",
         latlng: at(point), highlighted: highlighted.has(point.id), selected: point.id === selectedNodeId });
+    }
+  }
+  // Ensemble members (design.md 7.5, 11h H4): thin solid lines, no node unless the member is
+  // chosen on its own; never joined to an official fix and never in the first fit. Nothing is
+  // drawn that combines members (no envelope, no mean).
+  for (const line of ensembleLines) {
+    if (line.points.length > 1) {
+      items.push({ type: "ensembleLine", layer: "ensemble", model: line.model, member: line.member,
+        focused: Boolean(line.focused), dimmed: Boolean(line.dimmed), latlngs: line.points.map(at) });
+    } else if (!line.focused) {
+      // A member with a single point (1.9 allows it) still shows, as a small dot that selects it.
+      items.push({ type: "ensembleDot", layer: "ensemble", model: line.model, member: line.member,
+        dimmed: Boolean(line.dimmed), latlng: at(line.points[0]) });
+    }
+    if (!line.focused) continue;
+    for (const point of line.points) {
+      items.push({ type: "ensembleNode", layer: "ensemble", model: line.model, member: line.member, nodeId: point.id,
+        nodeKind: "ensemble", latlng: at(point), highlighted: highlighted.has(point.id),
+        selected: point.id === selectedNodeId });
     }
   }
   return items;

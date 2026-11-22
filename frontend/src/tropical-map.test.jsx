@@ -71,3 +71,52 @@ test("model layers draw on the real map without errors and stay out of the first
   spy.mockRestore();
   expect(errors).toEqual([]);
 });
+
+test("the largest spaghetti (4 Ensembles, 31-52 members) draws on the real map, stays out of the fit and clicks a member", async () => {
+  const { default: L } = await import("leaflet");
+  const { buildEnsembleTracks, checkEnsembleFile } = await import("./tropical/ensemble");
+  const { cempakaGefs00, cempakaIfsEns18 } = await import("./tropical/ensemble-test-fixtures");
+  const errors = [];
+  const onError = event => { errors.push(String(event.error || event.message)); event.preventDefault(); };
+  window.addEventListener("error", onError);
+  const spy = vi.spyOn(console, "error").mockImplementation(message => errors.push(String(message)));
+  const fit = vi.spyOn(L.Map.prototype, "fitBounds");
+  const added = vi.spyOn(L.Polyline.prototype, "onAdd");
+  const ID = "2026-jma-tc2638";
+  const tracks = buildTracks(checkStormFile(cempakaAnalysis(), "analysis", ID), checkStormFile(cempakaForecast(), "forecast", ID));
+  // Synthetic worst case: the real members copied under the other two Ensembles (AIGEFS 31, AIFS ENS 52).
+  const gefs = cempakaGefs00();
+  const aigefs = { ...cempakaGefs00(), model: "aigefs", members: gefs.members.map((member, i) => ({ ...member, m: `a0${String(i).padStart(2, "0")}` })) };
+  const ifs = cempakaIfsEns18();
+  const aifsMembers = [...ifs.members, { ...ifs.members[0], m: "51" }, { ...ifs.members[1], m: "52" }];
+  const aifs = { ...cempakaIfsEns18(), model: "aifs-ens", members: aifsMembers.map((member, i) => ({ ...member, m: String(i + 1) })) };
+  const files = [checkEnsembleFile(gefs, ID, "2026111100", "gefs"), checkEnsembleFile(aigefs, ID, "2026111100", "aigefs"),
+    checkEnsembleFile(ifs, ID, "2026111018", "ifs-ens"), checkEnsembleFile(aifs, ID, "2026111018", "aifs-ens")];
+  expect(files.map(file => file.members.length)).toEqual([31, 31, 50, 52]);
+  const lines = files.flatMap(buildEnsembleTracks).map(track => ({ ...track, focused: false, dimmed: false }));
+  const officialItems = drawables(tracks, defaultToggles());
+  const items = drawables(tracks, defaultToggles(), null, null, [], lines);
+  const ensembleLines = items.filter(item => item.type === "ensembleLine").length;
+  const colors = { cwa: "#0f0", jma: "#00f", jtwc: "#f00", gefs: "#84f", aigefs: "#e48", "ifs-ens": "#1ab", "aifs-ens": "#889" };
+  const onSelectMember = vi.fn();
+  const view = render(<TrackMap items={items} colors={colors} onSelectNode={() => {}} onSelectMember={onSelectMember} ready />);
+  await act(async () => { await new Promise(r => setTimeout(r, 50)); });
+  expect(fit).toHaveBeenCalledTimes(1);
+  const officialPoints = officialItems.flatMap(item => (item.type === "line" ? item.latlngs : item.type === "node" ? [item.latlng] : []));
+  const key = points => points.map(point => point.join(",")).sort();
+  expect(key(fit.mock.calls[0][0])).toEqual(key(officialPoints));
+  const officialLines = officialItems.filter(item => item.type === "line").length;
+  expect(added.mock.calls.length).toBeGreaterThanOrEqual(ensembleLines + officialLines);
+  // A member line fires the member choice (Leaflet's own event path, no real canvas hit test in jsdom).
+  const memberLayer = added.mock.contexts.find(layer => layer.listens && layer.listens("click") && layer.options.weight === 1);
+  memberLayer.fire("click");
+  expect(onSelectMember).toHaveBeenCalledTimes(1);
+  expect(onSelectMember.mock.calls[0][0]).toMatch(/^(gefs|aigefs|ifs-ens|aifs-ens)$/);
+  view.unmount();
+  await act(async () => { await new Promise(r => setTimeout(r, 100)); });
+  fit.mockRestore();
+  added.mockRestore();
+  window.removeEventListener("error", onError);
+  spy.mockRestore();
+  expect(errors).toEqual([]);
+});

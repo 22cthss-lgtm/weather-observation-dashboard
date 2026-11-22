@@ -1,6 +1,6 @@
 // Shared pieces of the /tropical overview and storm pages (design.md 7.5, 7.6).
 import { REQUIRED_AGENCIES } from "../../tropical/status";
-import { MODEL_LAYERS_ENABLED } from "../../tropical/features";
+import { ENSEMBLE_LAYERS_ENABLED, MODEL_LAYERS_ENABLED } from "../../tropical/features";
 import {
   AGENCY_LABELS, AGENCY_SHORT, formatDualTime, formatPosition, formatPressure, formatWind, textOrNull,
 } from "../../tropical/format";
@@ -19,8 +19,8 @@ export function DualTime({ stamp, missing = "—" }) {
 export const INTENSITY_NOTE = "強度不可跨機構比較：JTWC 為 1 分鐘平均風速，JMA 與 CWA 為 10 分鐘平均風速；"
   + "分類為各機構原文，未做對照。本頁不排序、不平均、不換算各機構的數值。";
 
-/** @param models show the NOAA/ECMWF lines (design.md 7.6, 11f F9); follows the build switch. */
-export function Attribution({ models = MODEL_LAYERS_ENABLED }) {
+/** @param models show the NOAA/ECMWF lines (design.md 7.6, 11f F9, 11h H8); follows either build switch. */
+export function Attribution({ models = MODEL_LAYERS_ENABLED || Boolean(ENSEMBLE_LAYERS_ENABLED) }) {
   return (
     <footer className="tc-attribution" aria-labelledby="tc-attribution-title">
       <h3 id="tc-attribution-title">資料來源與署名（暫定文字，正式版本待定稿）</h3>
@@ -42,12 +42,12 @@ export function Attribution({ models = MODEL_LAYERS_ENABLED }) {
         {models ? (
           <>
             <li>
-              <strong>NOAA／NWS（數值模式 GFS、AIGFS）：</strong>本頁含美國國家氣象局（NOAA／NWS）的熱帶氣旋追蹤資料，
+              <strong>NOAA／NWS（數值模式 GFS、AIGFS 與 Ensemble GEFS、AIGEFS）：</strong>本頁含美國國家氣象局（NOAA／NWS）的熱帶氣旋追蹤資料，
               該資料不受著作權保護（17 U.S.C. §403）。本站與 NOAA／NWS 無關，亦未獲其背書；
               資料經本站轉換格式與篩選，不是官方資料的原樣呈現。
             </li>
             <li>
-              <strong>ECMWF（數值模式 IFS、AIFS）：</strong>本頁的 IFS、AIFS 路徑以歐洲中期天氣預報中心的資料與產品為基礎
+              <strong>ECMWF（數值模式 IFS、AIFS 與 Ensemble IFS ENS、AIFS ENS）：</strong>本頁的 IFS、AIFS 與 IFS ENS、AIFS ENS 路徑以歐洲中期天氣預報中心的資料與產品為基礎
               （based on data and products of the European Centre for Medium-Range Weather Forecasts (ECMWF)），
               著作權屬 ECMWF，依 CC BY 4.0 授權使用。本站已修改原始資料：轉換格式、只保留西北太平洋已識別的系統、只保留路徑欄位。
               ECMWF 不對本站的內容負責。完整的署名、著作權與免責聲明原文待定稿。

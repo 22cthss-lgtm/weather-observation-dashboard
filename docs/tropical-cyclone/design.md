@@ -1332,6 +1332,32 @@ S9（Ensemble 後端）開始前，使用者同意的計畫 G1–G12 照 1.8、1
 
 ---
 
+## 11h. S10 的解讀（2026-11-22，使用者同意 H1–H10 後實作；實作時補上的細節送獨立審查並在 HANDOFF 列出）
+
+S10（Ensemble 前端與 cycle 選擇）開始前提出 H1–H10，使用者於 2026-11-22 同意（一次做完，不拆 S10a／S10b）。H11–H17 是實作時補上的解讀（H16、H17 來自獨立審查），都在 H1–H10 與前文的範圍內。與前文不一致之處以本節為準。
+
+| # | 項目 | 處理 |
+|---|---|---|
+| H1 | 分支 | worktree `.claude/worktrees/s10-spaghetti`，分支 `feature/tropical-spaghetti`，基準 `c7ac366` |
+| H2 | 讀取（7.4）| 只在 Forecast 分頁、Ensemble 開關開啟、而且至少勾選一個 Ensemble 時，讀 `tropical/ensemble/index.json`（頁面生命週期內一次），再讀所選 cycle、已勾選模式的 `tropical/ensemble/storms/{id}/{cycle}/{model}.json`。與官方檔、模式檔共用頁面快取（key `ensemble/index`、`ensemble/{id}/{cycle}/{model}`）；失敗與逾時（15 秒）也快取；不再需要的請求（換 cycle、關掉圖層、離開分頁）中止且不快取，之後需要時重讀；仍需要的請求不因其他讀取而重新開始。檔案層檢查：`schema_version` 1、`cyclone_id`／`cycle`／`model` 與請求一致、`init_time` 等於 cycle、`provider`／`wind_unit` 對應該模式、`members_expected` 為正整數、`members` 為陣列且不超過 60 筆；不合＝讀取失敗。單一成員（`m` 在該模式的範圍內、`type` 為 null 或 0–255 的整數、`track` 同 F3）不合或 `m` 重複時，只略過該成員並計數 |
+| H3 | cycle（E4）| 選項＝模式索引中這個系統的 cycles，加上已讀到的 Ensemble 索引中的 cycles（聯集）。預設＝最新的確定性 cycle（沒有確定性 cycle 時取最新的 Ensemble cycle），所以讀到 Ensemble 索引不會改變預設。`?cycle=YYYYMMDDHH` 只在 Forecast 分頁使用；格式不合或不在選項中時改用預設並顯示提示。選擇 cycle 以 replace 更新網址；切換分頁的連結不帶 `cycle`。確定性檔與已勾選的 Ensemble 都換成所選 cycle（同一個起報時間）；**不自動改選其他 cycle**。官方路徑不隨 cycle 改變。「模式資料可能未更新」（F8）一律以最新的確定性 cycle 判斷，不受所選 cycle 影響 |
+| H4 | 繪製（7.5）| 每個 Ensemble 一個顏色（GEFS `#845ef7`、AIGEFS `#e64980`、IFS ENS `#15aabf`、AIFS ENS `#868e96`）；全部成員時畫 1 px 細實線（不透明度 0.55）、不畫節點；只有一個點的成員畫成小圓點（可點選以單獨查看，審查 S2）；選了單一成員時該成員改為深色 2.5 px 並畫空心節點，其他成員淡化（0.2）。繪製順序：風圈→機率圓→Ensemble 線→官方線與模式線→模式與 Ensemble 節點→官方節點；單獨查看的成員最後畫。Ensemble 不進第一次 fit；沿用 canvas renderer。**不畫包絡線、不算機率、不取平均，不標示「控制成員」** |
+| H5 | 成員選擇與細節 | 每個已讀到的 Ensemble 有「全部成員／成員 X」選單（ECMWF 依數值排序）；點地圖上的成員線也會選取該成員（線的點選容差 4 px，不另畫隱形線）。成員節點細節：模式、提供者、成員代碼（來源原樣）、`type` 不是 null 時列「ensembleForecastType（來源原始代碼，未解讀）」、cycle、時效、有效時間、位置、氣壓、模式 10 m 最大風；不顯示 `match`、`source_id` |
+| H6 | 時間軸 | 全部成員時不加刻度；單獨查看的成員才把它的節點加入刻度（比照 E3）。「最新分析」只放官方 fix |
+| H7 | 建置開關 | `VITE_TROPICAL_ENSEMBLE_LAYERS`（`features.js`），預設開啟；`off` 時沒有 Ensemble 區塊、沒有 `tropical/ensemble/` 請求。與 `VITE_TROPICAL_MODEL_LAYERS` 互相獨立；兩者都 `off` 時 cycle 選擇器也不顯示 |
+| H8 | 署名 | 沿用 NOAA／NWS、ECMWF 的暫定行，名稱補上 GEFS、AIGEFS、IFS ENS、AIFS ENS；任一開關開啟就顯示 |
+| H9 | 效能 | 最壞情況（4 個 Ensemble、164 個成員）的實測見 HANDOFF |
+| H10 | 預覽資料 | `.runtime/s10-preview/`（不入版控）：`gen/ensemble.py` 以 S9 的 fixtures 離線產生真實的 Ensemble 檔（後端驗證器驗過）；情境見 `scenarios.mjs` |
+| H11 | 成員數 | 「N 個成員中的 M 個」用**檔案**的 `members_expected` 與通過檢查的成員數（地圖上實際畫的數量）；有成員被略過時另寫「另有 K 筆成員資料不完整，未顯示」。索引的 `members` 只用來判斷該 cycle 有沒有這個 Ensemble |
+| H12 | 這個 cycle 沒有此 Ensemble | 已勾選但所選 cycle 沒有該 Ensemble 時寫「所選的 cycle 沒有此 Ensemble」，並列出索引中有此 Ensemble 的 cycle（UTC）；這個系統的任何 cycle 都沒有時寫「目前沒有這個系統的此 Ensemble 資料」（審查 M1）。不自動切換（H3）。只開 Ensemble 時，起報時間一行寫「已開啟的 Ensemble 起報時間（cycle）」（審查 M3）；沒有任何可選 cycle 時不顯示「已改為顯示預設的 cycle」（審查 M2）|
+| H13 | 選取的保留 | 換 cycle 時清除模式與 Ensemble 節點的選取（節點 id 在不同 cycle 重複）；單獨查看的成員若新 cycle 也有同一代碼則保留，否則回到全部成員。關掉 Ensemble 圖層會清除它的成員選取。離開 Forecast 分頁再回來，所有圖層開關回到預設（與 F 系列相同）|
+| H14 | 程式結構 | 模式與 Ensemble 的讀取移到 `pages/tropical/useForecastFiles.js`，由 `StormDetail` 內只在 Forecast 分頁掛載的 `ForecastTab` 使用（原 `useModelFiles` 的行為不變：只在 Forecast 分頁讀、每檔一次、失敗快取、中斷不快取）。不新增套件；Ensemble 程式留在颱風頁的 chunk |
+| H15 | 測試設定（共用）| `frontend/vite.config.js` 的 `test` 加 `testTimeout: 20000` 與 `setupFiles`（新檔 `src/test-setup.js`：Testing Library 的 `asyncUtilTimeout` 由 1 秒改為 5 秒）。理由：在本機以 `c7ac366` 跑完整前端測試時，S8b 的「model files are read only on the Forecast tab…」已經要 4.1–4.3 秒（上限 5 秒）；S10 增加的測試檔讓整體時間多約 30–50%（審查實測 23.7 秒→約 36 秒），這一項在完整執行中要 4.7–6.5 秒，新的 Ensemble 頁面測試在完整執行中也要 5.7–7.6 秒（單獨執行約 1.4 秒）；不改設定時，審查的兩次完整執行有一次 36 項失敗（同一檔案內連鎖逾時）。發布流程每輪都跑完整測試，逾時會擋住發布（11/9 的教訓），所以放寬上限，不改測試內容。只放寬等待時間，測試失敗時最多晚幾秒才報錯 |
+| H16 | 網址的 cycle 只在 Ensemble 索引中（審查 S1；**擴充 H2**）| `?cycle=` 指定的 cycle 不在確定性模式的清單中時（或確定性開關關閉時），即使還沒有勾選任何 Ensemble，也先讀 `tropical/ensemble/index.json`（一個小檔），讀到之前不讀任何 cycle 檔。這樣頁面只決定一次：在 Ensemble 索引中就直接選它（確定性區塊顯示「所選的 cycle 沒有確定性模式資料」），不在就顯示「不在目前的資料中」並用預設。理由：原本會先說「不在資料中」，勾選 Ensemble 後又自己跳到該 cycle，違反 H3 的「不自動改選」。代價（複查 N3）：網址的 cycle 已不在兩個索引中時，一律先讀 Ensemble 索引；該索引卡住時，確定性區塊最多等 15 秒逾時（或使用者自行選 cycle）。只開 Ensemble 時，起報時間的兩句提示都寫「Ensemble」（複查 N1） |
+| H17 | 審查後接受的現狀 | (1) 署名的 NOAA／ECMWF 兩行由同一個條件控制，只開其中一種開關時也會列出另一種的產品名稱（S11 定稿時再分開）；(2) `modelCycles` 比原來的 `modelEntry` 嚴格：較舊的 cycle 項目壞掉時整個系統的模式顯示「暫時無法取得」（後端驗證器不會寫出這種索引）；(3) 前端檢查比後端寬鬆（NOAA 成員的整數 `type`、0 個成員、任意正的 `members_expected`），只影響顯示的原始值與計數；(4) 「有此 Ensemble 的 cycle」只寫月日時，不寫年份；(5) 只有一個點的成員實際上多半是 τ0（系統位置），小圓點會被其他成員的起點與官方 fix 節點蓋住，點地圖時常選到官方節點，仍可從成員選單選取（複查 N2）|
+
+---
+
 ## 12. 假設、[待驗證] 與退路
 
 設計**沒有**把以下任何一項當成事實；每一項都有不成立時的行為。
