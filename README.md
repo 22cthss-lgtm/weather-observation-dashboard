@@ -6,7 +6,7 @@ A static weather dashboard that gathers observation and analysis products from s
 
 > **中文簡介**
 > 這是一個把多個官方氣象機構的觀測與分析圖資整理在同一處的靜態網站。資料由 Python 程式抓取並整理成 JSON，透過 GitHub Actions 定時更新、驗證後部署到 GitHub Pages；前端以 React 讀取這些靜態 JSON，圖片則直接從官方網址載入，不另存圖檔。
-> 目前提供 12 種圖資（臺灣即時觀測、綜觀天氣分析、海洋與颱風潛勢、極區海冰）與雨量排行。另有「熱帶系統專區」（西北太平洋）：整合 CWA、JMA、JTWC 官方路徑的總覽與個別系統頁，以及 NOAA（GFS、AIGFS）與 ECMWF（IFS、AIFS）的確定性數值模式路徑已上線，Ensemble 與衛星圖等仍在開發中。
+> 目前提供 12 種圖資（臺灣即時觀測、綜觀天氣分析、海洋與颱風潛勢、極區海冰）與雨量排行。另有「熱帶系統專區」（西北太平洋）：整合 CWA、JMA、JTWC 官方路徑的總覽與個別系統頁，NOAA（GFS、AIGFS）與 ECMWF（IFS、AIFS）的確定性數值模式路徑，以及 Ensemble（GEFS、AIGEFS、IFS ENS、AIFS ENS）的成員路徑與 cycle 選擇已上線，衛星圖等仍在開發中。
 
 ---
 
@@ -25,11 +25,13 @@ Images are always loaded from the agencies' own URLs; the site stores only metad
 
 ### Tropical Cyclone Center (Western North Pacific) — partly live, still in development
 
-The official tracks and the deterministic model tracks are live at [`/tropical`](https://22cthss-lgtm.github.io/weather-observation-dashboard/tropical/). Ensemble (spaghetti) plots and satellite imagery are still being developed on the `feature/tropical-cyclone` branch.
+The official tracks, the deterministic model tracks and the ensemble (spaghetti) tracks are live at [`/tropical`](https://22cthss-lgtm.github.io/weather-observation-dashboard/tropical/). Satellite imagery is still being developed on the `feature/tropical-cyclone` branch.
 
 - An overview of active systems, combining the official advisories of CWA, JMA and JTWC. Systems are matched by agency number, name and position.
 - A page per storm with each agency's analysis side by side, an interactive map of the official past and forecast tracks (Leaflet with a bundled Natural Earth land outline, no external map tiles), and a timeline aligned to the agencies' real forecast valid times.
-- Deterministic model tracks as optional layers on the Forecast tab, all off by default: NOAA GFS and AIGFS (ATCF tracker output) and ECMWF IFS and AIFS (tropical-cyclone BUFR tracks). Only the latest cycle is shown, and only for systems matched to an official one. They are labelled as raw model output, not official forecasts and not forecasts made by this site.
+- Deterministic model tracks as optional layers on the Forecast tab, all off by default: NOAA GFS and AIGFS (ATCF tracker output) and ECMWF IFS and AIFS (tropical-cyclone BUFR tracks). Shown only for systems matched to an official one. They are labelled as raw model output, not official forecasts and not forecasts made by this site.
+- Ensemble member tracks as optional layers on the same tab, also off by default: NOAA GEFS and AIGEFS (ATCF tracker output per member) and ECMWF IFS ENS and AIFS ENS (tropical-cyclone BUFR tracks). Each ensemble is drawn as thin lines, one per member, and a single member can be picked to see its points on the map and the timeline. The page states that the spread of the members is not an official probability; no envelope, mean or probability is computed. Member files are read only when a layer is switched on.
+- A cycle selector on the Forecast tab (and `?cycle=YYYYMMDDHH` in the address) switches the deterministic and ensemble layers together to the same initialisation time; up to 4 deterministic and 2 ensemble cycles are kept. The official tracks do not change with it.
 - Display rules: intensities are shown only in the units and averaging periods each agency gives, never converted or compared across agencies. The timeline never interpolates, and forecasts from different initialisation times are labelled as such.
 
 Design notes and the stage-by-stage plan are in [`docs/tropical-cyclone/`](docs/tropical-cyclone/).
@@ -131,7 +133,7 @@ This site redistributes metadata and links to products published by:
 - Cooperative Institute for Meteorological Satellite Studies (CIMSS), University of Wisconsin–Madison
 - National Snow and Ice Data Center (NSIDC)
 - Tropical Cyclone Center: Joint Typhoon Warning Center (JTWC), alongside CWA and JMA above; land outline from Natural Earth (public domain)
-- Tropical Cyclone Center model tracks: NOAA / National Weather Service (GFS and AIGFS tracker output); European Centre for Medium-Range Weather Forecasts (ECMWF) — the IFS and AIFS tracks are based on data and products of ECMWF, © ECMWF, used under CC BY 4.0, and modified by this site (reformatted, reduced to the tracks of identified Western North Pacific systems). ECMWF is not responsible for this site's content.
+- Tropical Cyclone Center model tracks: NOAA / National Weather Service (GFS and AIGFS tracker output, GEFS and AIGEFS ensemble tracker output); European Centre for Medium-Range Weather Forecasts (ECMWF) — the IFS, AIFS, IFS ENS and AIFS ENS tracks are based on data and products of ECMWF, © ECMWF, used under CC BY 4.0, and modified by this site (reformatted, reduced to the tracks of identified Western North Pacific systems). ECMWF is not responsible for this site's content.
 
 All images and data remain the property of their respective agencies and are subject to their terms of use. This site is an independent project, not affiliated with or endorsed by any of these agencies. For official forecasts and warnings, please refer to the agencies directly (in Taiwan, the CWA).
 

@@ -431,3 +431,24 @@ workflow 目前仍只有手動觸發，沒有啟用 schedule。
 
 - **停用**：從 `policies/due-intervals.json` 移除 `tropical_models`，同步修改 `tests/test_scheduling.py`、`tests/test_tropical_pipeline.py`，並把前端 `src/tropical/features.js` 的預設改為關閉。
   **不得**移除快照白名單或 `src/tropical_contract.py` 的模式驗證器。
+
+## 12. 熱帶系統 Ensemble 路徑（`tropical_ensemble`，S10 里程碑）
+
+讀官方索引後，為 `active` 的系統抓 NOAA GEFS／AIGEFS 的 ATCF tracker 成員檔與 ECMWF IFS-ENS／AIFS-ENS 的 tf BUFR，逐成員對到官方系統後寫出成員路徑。
+不是圖資產品，不指定名稱時本機入口不會執行它。資料契約見 [docs/tropical-cyclone/design.md](../docs/tropical-cyclone/design.md)（1.8、1.9、5.4、6.1、11g）。
+
+- **來源**：與確定性模式相同的 `noaa`、`ecmwf` 主機；任務在自己的 `http_scope()` 內執行，兩個來源的時間窗都從任務開始起算、共用 240 秒，每來源最多 200 次請求（`HttpPolicy` 的選用參數 `window_start`）。固定 UA，同來源間隔至少 1 秒。不需要 API Key。
+- **請求**：先 ECMWF 後 NOAA；每個 Ensemble 每輪最多處理一個已發布的 cycle（最近 2 個，新的優先）。GEFS／AIGEFS 先探測第一個成員檔，是 200 才請求其餘 30 個；下載失敗或到達時間上限時，未取得的成員記進 `missing_files`，下一輪只補這些。沒有 `active` 系統時不發請求。
+- **相依套件**：同確定性模式（`pybufrkit`、`bitstring<4`）。沒裝時 `tests/test_tropical_ensemble.py` 有 7 項會失敗。
+- **輸出**：`<資料根>/tropical/ensemble/index.json`（縮排）與 `tropical/ensemble/storms/{cyclone_id}/{cycle}/{model}.json`（精簡格式）。JTWC 編號的橋接只唯讀 `tropical/models/index.json`。先寫成員檔，最後寫索引；兩個來源都失敗時丟 `AllSourcesFailed`，舊檔保留；到達時間上限不算來源失敗。
+- **排程**：`policies/due-intervals.json` 第 16 項，每 3600 秒，失敗依 1800／3600／7200／14400 秒重試，排在 `tropical_models` 之後。
+- **大小**：成員檔 192 KB、索引 16 KB、`tropical/ensemble/` 前綴 2.5 MB（超過時的捨棄順序見 design 11g G11）。
+- **清除**：`snapshot_runner._prune_tropical` 依 Ensemble 索引刪除不再列出的成員檔，並往上移除空目錄到 `storms/` 為止；索引無效時不刪。
+- **本機執行**：務必指定 `.runtime` 內的輸出位置；需要該位置已有官方索引，否則只寫空索引。
+
+```powershell
+.\.venv\Scripts\python.exe -B fetchers\update_images.py tropical_ensemble --output-root .runtime\<資料夾>\images
+```
+
+- **停用**：從 `policies/due-intervals.json` 移除 `tropical_ensemble`，同步修改 `tests/test_scheduling.py`、`tests/test_tropical_pipeline.py` 與 `tests/test_tropical_ensemble.py`（`PipelineTests` 也寫死任務清單），並把前端 `src/tropical/features.js` 的 `ENSEMBLE_LAYERS_ENABLED` 預設改為關閉（同步在 `src/tropical-ensemble-detail.test.jsx` 以 `vi.mock` 維持開啟）。
+  **不得**移除快照白名單或 `src/tropical_contract.py` 的 Ensemble 驗證器。

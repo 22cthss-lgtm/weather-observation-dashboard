@@ -6,6 +6,7 @@
 - history v2 與先前來源／恢復修正維持不變。本批只實作接力入口、停止與去重保護，沒有改各圖資到期、歷史或保存政策（保存政策於 2026-11-10 另行調整，見第 4 節保存政策現況）。第 12 節保留先前 cron 直接入口紀錄；接力線上驗收須有真實 run 證據，不把模擬事件當作接力成功。
 - 2026-11-19：熱帶系統專區官方路徑（S7 里程碑）合併到 `main`（`05c6c7f`），新增第 14 項 due 任務 `tropical_official`，見第 14 節；第 1–13 節描述的既有 13 項流程沒有改變。
 - 2026-11-20：S8 里程碑（確定性模式路徑）快轉進 `main`（`be98041`），新增第 15 項 due 任務 `tropical_models`，見第 15 節；第 1–14 節的流程沒有改變。
+- S10 里程碑（Ensemble 路徑與 cycle 選擇，S9＋S10）合併進 `main`，新增第 16 項 due 任務 `tropical_ensemble`，見第 16 節；第 1–15 節的流程沒有改變（`http_client` 只新增一個預設關閉的選用參數）。
 - **維護要求：之後修改資料流、Fetcher、恢復／發布或前端讀取行為時，應同步更新本文件、盤點日期與程式基準。**
 
 HANDOFF.md 與本機 .runtime 驗收證據不納入版本控制；相關連結供本機維護使用。
@@ -459,3 +460,45 @@ GET 最多三次、每次 timeout 10 秒、退避 1／3 秒；401／403／壞文
 - 新程式第一輪 Relay 44715095461 → Pages chain 44715153086：build 156 秒（安裝相依套件 8 秒、refresh 46 秒、Python 測試 19 秒）；deploy、cleanup job 也安裝成功；6 小時間隔的項目提早被檢查，間接顯示排程狀態重置；部署後 `deployment.json` 為 `be98041`／44715153086；`tropical/models/index.json` 由 404 變 200，兩個來源 `idle`、沒有系統。
 - 之後 Pages chain 44716639647（沒有任務到期，未部署；已恢復第一輪保存的含 `tropical/models/` 的快照與 state）、44718112897、44719566799（官方索引 10:29Z 再次更新並部署）皆成功。
 - 尚未自然發生：有活躍系統時的模式檔、任一模式來源失敗、模式任務重試退避、build 接近時限。
+
+## 16. 熱帶系統 Ensemble 路徑任務 `tropical_ensemble`（S10 里程碑）
+
+設計與資料契約以 [docs/tropical-cyclone/design.md](tropical-cyclone/design.md) 為準（1.8、1.9、5.4–5.6、6.1、11g、11h）；本節只摘要它如何接進既有流程。
+
+### 來源與請求
+
+| 來源 | 請求 | 備註 |
+| --- | --- | --- |
+| NOAA NOMADS（`noaa`） | GEFS、AIGEFS：每個模式每輪最多處理一個已發布的 cycle，先探測第一個成員檔（`ac00`、`a000`），是 200 才請求其餘 30 個；最新的 cycle 回 403／404 時，同一輪再探測較舊的那一個（每模式最多 2 次探測） | 以已知檔名直接請求，不列目錄；403／404 在逾期前視為尚未發布 |
+| ECMWF open data（`ecmwf`） | IFS-ENS、AIFS-ENS：每個模式每輪最多下載一個 cycle 的 tf BUFR（0.3–1.1 MB）；最新的 cycle 回 403／404 時改請求較舊的，所以每模式最多 2 次請求 | 下載後立即以 `pybufrkit` 解碼，解碼時間算在任務的時間上限內 |
+
+- 先讀候選目錄內的官方索引，三種情況與 `tropical_models` 相同（讀不到或無效時不請求、不改自己的檔；沒有 `active` 系統時不請求，來源記為 `idle`）。
+- 每個模式只處理最近 2 個 cycle，新的優先；最新的尚未發布時同一輪改試較舊的（design 11g G2）。先 ECMWF 後 NOAA。
+- 任務在自己的 `http_scope()` 內執行，使用自己的 `HttpPolicy`：兩個來源的時間窗都從任務開始起算、共用 240 秒，每來源最多 200 次（`http_client` 新增的選用參數 `window_start`；預設 `None`，其他任務的行為不變）。到達時間上限時，未取得的成員記進 `missing_files`，下一輪只補這些，不算來源失敗。
+- JTWC 編號的橋接只唯讀 `tropical/models/index.json`，不請求 tcvitals。
+- 只有兩個來源都失敗時任務才算失敗（`AllSourcesFailed`，保留舊檔）。
+
+### 接線
+
+- `policies/due-intervals.json` 第 16 項：3600 秒，重試 1800／3600／7200／14400 秒，排在 `tropical_models` 之後。
+- `snapshot_runner.belongs`：前綴 `tropical/ensemble/`（S4 已登記）；`snapshots.allowed_path`／`validate_resource` 新增 Ensemble 索引與成員檔的路徑與驗證器；`REQUIRED` 不變。
+- 清除：`_prune_tropical` 依 Ensemble 索引刪除不再列出的成員檔，並往上移除空目錄直到 `storms/` 為止；官方與模式部分行為不變。
+- 大小上限：成員檔 192 KB、索引 16 KB、`tropical/ensemble/` 前綴 2.5 MB。
+- 前端：只在 Forecast 分頁勾選 Ensemble 時讀 Ensemble 索引與所選 cycle 的成員檔（網址的 `?cycle=` 不在確定性清單時也會先讀索引）；四個 Ensemble 圖層預設關閉；cycle 選擇器讓確定性與 Ensemble 一起換成同一起報時間。建置開關 `VITE_TROPICAL_ENSEMBLE_LAYERS`（預設開啟，`off` 時不顯示、不請求），與確定性模式的開關互相獨立。
+- 共用的 `frontend/vite.config.js` 放寬測試逾時（`testTimeout` 20000 與 `src/test-setup.js`；design 11h H15），只影響測試，不影響建置產物。
+
+### 失敗隔離
+
+- 任務丟例外、逾時、兩個來源都失敗或寫出無效檔時，`checked_update` 只還原 `tropical/ensemble/` 前綴，進入重試；合併前以同一份舊快照比對 `main` 與合併後程式，13 項的檔案、檢查、排程、部署決策都相同（本機驗證，紀錄在 HANDOFF）。
+- 時間：無活躍系統時 0 請求；有系統時一輪約 1–3 分鐘；所有慢速或卡住的情境約在 240 秒停止（另加最多一塊 16 KB 讀取的既有限制，見 design 11g G5）。
+
+### 上線的一次性影響
+
+- 任務集合改變：排程狀態重置，第一輪 16 項全部到期。沒有活躍系統時 `tropical_ensemble` 不發請求，只寫出來源為 `idle` 的空索引。
+- 第一輪起快照就含 `tropical/ensemble/index.json`。
+
+### 停用與回復
+
+- 只停前端：把 `frontend/src/tropical/features.js` 的 `ENSEMBLE_LAYERS_ENABLED` 預設改為關閉，並在假設預設開啟的 `frontend/src/tropical-ensemble-detail.test.jsx` 加上 `vi.mock("./tropical/features", …)` 讓兩個開關維持開啟（其他測試檔不受影響，2026-11-23 演練確認）。後端照常產生資料；確定性模式不受影響。
+- 停後端：從 `due-intervals.json` 移除 `tropical_ensemble`，同步修改寫死任務清單的測試：`test_scheduling.py` 的 `test_policy_contains_all_confirmed_intervals`、`test_tropical_pipeline.py` 的 `test_task_is_last_and_matches_the_design_schedule` 與 `test_adding_the_task_resets_the_schedule_once`、`test_tropical_ensemble.py` 的 `PipelineTests.test_ensemble_failure_leaves_everything_else_unchanged`（2026-11-23 演練確認；只改前兩個檔時發布流程會在 Python 測試失敗、不部署）。一律搭配停前端；既有 Ensemble 檔（含之後結束的系統）留在快照中不再更新也不再清除，大小受前綴 2.5 MB 上限約束。會再重置一次排程。
+- **不得以 revert 或還原白名單的方式停用**：第一輪起快照就含 `tropical/ensemble/`，沒有 Ensemble 白名單的程式無法恢復它們，只能部分回復（保留 `snapshots.py` 的 Ensemble 白名單與 `tropical_contract.py` 的驗證器）。
