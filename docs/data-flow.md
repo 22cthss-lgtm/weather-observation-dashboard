@@ -6,7 +6,7 @@
 - history v2 與先前來源／恢復修正維持不變。本批只實作接力入口、停止與去重保護，沒有改各圖資到期、歷史或保存政策（保存政策於 2026-11-10 另行調整，見第 4 節保存政策現況）。第 12 節保留先前 cron 直接入口紀錄；接力線上驗收須有真實 run 證據，不把模擬事件當作接力成功。
 - 2026-11-19：熱帶系統專區官方路徑（S7 里程碑）合併到 `main`（`05c6c7f`），新增第 14 項 due 任務 `tropical_official`，見第 14 節；第 1–13 節描述的既有 13 項流程沒有改變。
 - 2026-11-20：S8 里程碑（確定性模式路徑）快轉進 `main`（`be98041`），新增第 15 項 due 任務 `tropical_models`，見第 15 節；第 1–14 節的流程沒有改變。
-- S10 里程碑（Ensemble 路徑與 cycle 選擇，S9＋S10）合併進 `main`，新增第 16 項 due 任務 `tropical_ensemble`，見第 16 節；第 1–15 節的流程沒有改變（`http_client` 只新增一個預設關閉的選用參數）。
+- 2026-11-23：S10 里程碑（Ensemble 路徑與 cycle 選擇，S9＋S10）快轉進 `main`（`34ad89b`），新增第 16 項 due 任務 `tropical_ensemble`，見第 16 節；第 1–15 節的流程沒有改變（`http_client` 只新增一個預設為 `None`、行為不變的選用參數）。
 - **維護要求：之後修改資料流、Fetcher、恢復／發布或前端讀取行為時，應同步更新本文件、盤點日期與程式基準。**
 
 HANDOFF.md 與本機 .runtime 驗收證據不納入版本控制；相關連結供本機維護使用。
@@ -502,3 +502,11 @@ GET 最多三次、每次 timeout 10 秒、退避 1／3 秒；401／403／壞文
 - 只停前端：把 `frontend/src/tropical/features.js` 的 `ENSEMBLE_LAYERS_ENABLED` 預設改為關閉，並在假設預設開啟的 `frontend/src/tropical-ensemble-detail.test.jsx` 加上 `vi.mock("./tropical/features", …)` 讓兩個開關維持開啟（其他測試檔不受影響，2026-11-23 演練確認）。後端照常產生資料；確定性模式不受影響。
 - 停後端：從 `due-intervals.json` 移除 `tropical_ensemble`，同步修改寫死任務清單的測試：`test_scheduling.py` 的 `test_policy_contains_all_confirmed_intervals`、`test_tropical_pipeline.py` 的 `test_task_is_last_and_matches_the_design_schedule` 與 `test_adding_the_task_resets_the_schedule_once`、`test_tropical_ensemble.py` 的 `PipelineTests.test_ensemble_failure_leaves_everything_else_unchanged`（2026-11-23 演練確認；只改前兩個檔時發布流程會在 Python 測試失敗、不部署）。一律搭配停前端；既有 Ensemble 檔（含之後結束的系統）留在快照中不再更新也不再清除，大小受前綴 2.5 MB 上限約束。會再重置一次排程。
 - **不得以 revert 或還原白名單的方式停用**：第一輪起快照就含 `tropical/ensemble/`，沒有 Ensemble 白名單的程式無法恢復它們，只能部分回復（保留 `snapshots.py` 的 Ensemble 白名單與 `tropical_contract.py` 的驗證器）。
+
+### 線上紀錄（2026-11-23 UTC，公開 API 與網站唯讀查得）
+
+- PR #13 的 CI 與 CodeQL 通過後，`main` 於 09:50:19Z 由 `21a19ad` 快轉至 `34ad89b`。舊程式最後一輪 Pages chain 45150069029 正常完成。
+- 新程式第一輪 Relay 45151533727 → Pages chain 45151597205：build 163 秒（refresh 58 秒、Python 測試 28 秒、前端測試 24 秒）；6 小時與每日的項目提早被檢查，間接顯示排程狀態重置；部署後 `deployment.json` 為 `34ad89b`／45151597205；`tropical/ensemble/index.json` 由 404 變 200，兩個來源 `idle`、沒有系統。
+- 第二輪 Pages chain 45153169565：build 121 秒、refresh 4 秒，已恢復第一輪保存的含 `tropical/ensemble/` 的快照與 state，部署。
+- 網站載入的程式與合併前驗證的建置相同；`/tropical` 總覽不請求模式或 Ensemble 檔。
+- 尚未自然發生：有活躍系統時的 Ensemble 檔與線上 Forecast 分頁（cycle 選擇器、Ensemble 圖層）、任一 Ensemble 來源失敗、任務重試退避、有系統那一輪的 build 時間。
