@@ -110,10 +110,13 @@ test.each([["evil"], ["Forecast"], [""]])("an unknown tab %s falls back to the o
   expect(screen.getByRole("link", { name: "總覽" }).getAttribute("aria-current")).toBe("page");
 });
 
-test("the imagery tab says it is not open yet", async () => {
-  serve(cempakaRoutes());
+test("the imagery tab is open (S11) and reads nothing beyond the storm files", async () => {
+  const request = serve(cempakaRoutes());
   await renderAt(`/tropical?storm=${ID}&tab=imagery`);
-  expect(screen.getByText("圖像分頁尚未開放。")).toBeTruthy();
+  await settle();
+  expect(screen.getByRole("link", { name: "圖像" }).getAttribute("aria-current")).toBe("page");
+  expect(text()).not.toMatch(/尚未開放/);
+  expect(requested(request)).toEqual([INDEX_URL, fileUrl(ID, "analysis"), fileUrl(ID, "forecast")]);
 });
 
 test("analysis lists every agency in its own units, averaging, radii and past-track origin", async () => {

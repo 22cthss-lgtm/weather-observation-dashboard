@@ -46,7 +46,11 @@ test("without the deterministic layers the Ensemble layers still work on their o
   expect(within(section).getByText("（31 個成員中的 31 個）")).toBeTruthy();
   const cycles = screen.getByRole("group", { name: "數值模式與 Ensemble 的起報時間（cycle）" });
   expect(within(cycles).getByText(/目前只有一個 cycle：2026-11-11 00:00/)).toBeTruthy();
-  expect(within(screen.getByRole("contentinfo")).getByText(/ECMWF（數值模式/)).toBeTruthy();
+  // H17 (1) is split in S11: each line names only the products of the switches that are on.
+  const footer = screen.getByRole("contentinfo");
+  expect(within(footer).getByText(/ECMWF（Ensemble IFS ENS、AIFS ENS）/)).toBeTruthy();
+  expect(within(footer).getByText(/NOAA／NWS（Ensemble GEFS、AIGEFS）/)).toBeTruthy();
+  expect(footer.textContent).not.toMatch(/GFS、AIGFS|IFS、AIFS（|數值模式 IFS/);
   expect(screen.getByText(/已開啟的 Ensemble 起報時間（cycle）：/)).toBeTruthy(); // review M3
   expect(screen.getByText(/已開啟的 Ensemble 起報時間（cycle）與官方起報時間不同/)).toBeTruthy(); // recheck N1
   expect(document.body.textContent).not.toMatch(/已開啟的數值模式起報時間/);

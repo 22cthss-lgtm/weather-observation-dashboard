@@ -196,6 +196,53 @@
   padding-left: 20px;
 }
 
+/* S11: imagery tab and links to the site's image pages. */
+.tc-figure {
+  margin: 8px 0 0;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tc-official-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #e3e9f5;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.tc-figure dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 10px;
+  margin: 0 0 6px;
+}
+
+.tc-figure dt {
+  color: #4f5d78;
+}
+
+.tc-figure dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.tc-figure .tc-note + .tc-note {
+  margin-top: 4px;
+}
+
+.tc-site-links h3 {
+  margin: 0;
+}
+
+.tc-site-links a,
+.tc-figure a {
+  color: #2858a7;
+  text-decoration: underline;
+}
+
 .tc-attribution a {
   color: #2858a7;
   text-decoration: underline;

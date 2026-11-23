@@ -6,7 +6,7 @@
 
 - 資料：Natural Earth 1:50m Physical Vectors — Land（`ne_50m_land`），檔內 `ne_50m_land.VERSION.txt` 為 `4.1.0`。
 - 下載網址：`https://naciscdn.org/naturalearth/50m/physical/ne_50m_land.zip`（2026-11-18 10:10Z 取得一次，HTTP 200，457,183 bytes，SHA-256 `0b8e670cf80dce9cbebe2a193bc44ba5602758c22e1fa603980553646d7ff162`）。原始檔只存在本機 `.runtime/s7-basemap/raw/`，不入版控。
-- 授權：Natural Earth 官方網站的使用條款（Terms of Use）說明其資料屬**公有領域**、不要求署名（design.md 7.2、7.6 已採用）。下載的 zip 內附 README 沒有授權文字，本次也沒有另外抓取條款頁面；S11 定稿署名時一併對照原文。頁面署名區仍標示來源。
+- 授權：Natural Earth 官方網站的使用條款（Terms of Use）說明其資料屬**公有領域**、不要求署名（design.md 7.2、7.6 已採用）。下載的 zip 內附 README 沒有授權文字。S11（2026-11-23）以瀏覽器讀取 `https://www.naturalearthdata.com/about/terms-of-use/` 確認原文：「All versions of Natural Earth raster + vector map data found on this website are in the public domain.」「Crediting the authors is unnecessary.」頁面署名區仍標示來源與建議的短句「Made with Natural Earth.」（design.md 11i I7）。
 
 ## 處理步驟（一次性工具 `.runtime/s7-basemap/build_basemap.py`，只用 Python 標準函式庫，不入版控）
 

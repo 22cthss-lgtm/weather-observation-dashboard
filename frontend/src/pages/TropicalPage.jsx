@@ -6,7 +6,7 @@ import {
   sameNameStormIds,
 } from "../tropical/status";
 import { AGENCY_LABELS, formatErrorCode, formatIds, textOrNull } from "../tropical/format";
-import { AgencySummary, Attribution, Banner, DualTime } from "./tropical/common";
+import { AgencySummary, Attribution, Banner, DualTime, SiteImageLinks } from "./tropical/common";
 import StormDetail from "./tropical/StormDetail";
 import "./tropical.css";
 
@@ -190,6 +190,7 @@ export default function TropicalPage({ getNow = () => Date.now() }) {
           <SourceStatus index={index} staleSources={display.staleSources} />
         </>
       ) : null}
+      <SiteImageLinks />
       <Attribution />
     </section>
   );

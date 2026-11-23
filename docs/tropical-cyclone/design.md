@@ -235,7 +235,7 @@ CEMPAKA 已於 11/11 消散，PENA 仍在換日線以東。固定 UA、間隔 1.
 |---|---|
 | `agencies` | `jtwc`、`jma`、`cwa` 三個鍵都必須存在；沒有資料為 `null` |
 | `product_url` | 該筆資料的機構產品網址。JTWC 取 RSS 內的 `.tcw` 連結；JMA 取電文網址；CWA 固定為資料集頁面。必為字串 |
-| `graphic_url` | 官方警報圖的外連網址（目前只有 JTWC 的 `.gif`，取自 RSS）；沒有為 `null`。CWA 路徑圖的檔名規則是 **[待驗證]**，S11 再決定是否填入 |
+| `graphic_url` | 官方警報圖的外連網址（目前只有 JTWC 的 `.gif`，取自 RSS）；沒有為 `null`。CWA 路徑圖的檔名規則是 **[待驗證]**；S11 決定 V1 不填入（11i I3）|
 | `issued_at` | 機構發布時刻。JTWC 取 `.tcw` 第一行的日時組（如 `WTPN51 PGTW 111500` 的 `111500`），年月取自第二行的時間戳（樣本為 `261111141257`，即 2026-11-11）[實測 S3 的格式；推算規則是 **[假設]**]；JMA 取 `ReportDateTime`；CWA 若回應沒有發布時刻，取分析時刻 **[待驗證：CWA 回應是否有獨立的發布時間欄位]** |
 | `bulletin` | 機構的報次字串，**原樣保存、不補零也不去零**（JTWC `.tcw` 標頭行的 `022`、JMA 的 `Serial` 如 `53`）；沒有為 `null` |
 | `final` | 機構是否已宣告結束（第 3.2 節）。CWA 沒有已知的結束標記，固定 `false` |
@@ -1355,6 +1355,28 @@ S10（Ensemble 前端與 cycle 選擇）開始前提出 H1–H10，使用者於 
 | H15 | 測試設定（共用）| `frontend/vite.config.js` 的 `test` 加 `testTimeout: 20000` 與 `setupFiles`（新檔 `src/test-setup.js`：Testing Library 的 `asyncUtilTimeout` 由 1 秒改為 5 秒）。理由：在本機以 `c7ac366` 跑完整前端測試時，S8b 的「model files are read only on the Forecast tab…」已經要 4.1–4.3 秒（上限 5 秒）；S10 增加的測試檔讓整體時間多約 30–50%（審查實測 23.7 秒→約 36 秒），這一項在完整執行中要 4.7–6.5 秒，新的 Ensemble 頁面測試在完整執行中也要 5.7–7.6 秒（單獨執行約 1.4 秒）；不改設定時，審查的兩次完整執行有一次 36 項失敗（同一檔案內連鎖逾時）。發布流程每輪都跑完整測試，逾時會擋住發布（11/9 的教訓），所以放寬上限，不改測試內容。只放寬等待時間，測試失敗時最多晚幾秒才報錯 |
 | H16 | 網址的 cycle 只在 Ensemble 索引中（審查 S1；**擴充 H2**）| `?cycle=` 指定的 cycle 不在確定性模式的清單中時（或確定性開關關閉時），即使還沒有勾選任何 Ensemble，也先讀 `tropical/ensemble/index.json`（一個小檔），讀到之前不讀任何 cycle 檔。這樣頁面只決定一次：在 Ensemble 索引中就直接選它（確定性區塊顯示「所選的 cycle 沒有確定性模式資料」），不在就顯示「不在目前的資料中」並用預設。理由：原本會先說「不在資料中」，勾選 Ensemble 後又自己跳到該 cycle，違反 H3 的「不自動改選」。代價（複查 N3）：網址的 cycle 已不在兩個索引中時，一律先讀 Ensemble 索引；該索引卡住時，確定性區塊最多等 15 秒逾時（或使用者自行選 cycle）。只開 Ensemble 時，起報時間的兩句提示都寫「Ensemble」（複查 N1） |
 | H17 | 審查後接受的現狀 | (1) 署名的 NOAA／ECMWF 兩行由同一個條件控制，只開其中一種開關時也會列出另一種的產品名稱（S11 定稿時再分開）；(2) `modelCycles` 比原來的 `modelEntry` 嚴格：較舊的 cycle 項目壞掉時整個系統的模式顯示「暫時無法取得」（後端驗證器不會寫出這種索引）；(3) 前端檢查比後端寬鬆（NOAA 成員的整數 `type`、0 個成員、任意正的 `members_expected`），只影響顯示的原始值與計數；(4) 「有此 Ensemble 的 cycle」只寫月日時，不寫年份；(5) 只有一個點的成員實際上多半是 τ0（系統位置），小圓點會被其他成員的起點與官方 fix 節點蓋住，點地圖時常選到官方節點，仍可從成員選單選取（複查 N2）|
+
+---
+
+## 11i. S11 的解讀（2026-11-23，使用者同意 I1–I13 後實作）
+
+S11（Imagery、站內串接、署名定稿）開始前提出 I1–I13，使用者於 2026-11-23 同意（含請求清單 R1–R7）。都在第 1.4、7.4–7.6 節與 11h H17 的範圍內；與前文不一致之處以本節為準。條款擷取紀錄在 `.runtime/s11-imagery/terms/terms-evidence-20261123.md`（不入版控）。
+
+| # | 項目 | 處理 |
+|---|---|---|
+| I1 | 顯示哪些圖 | 只顯示 **JTWC 警報圖**（`analysis.json` 的 `agencies.jtwc.graphic_url`）。JMA 沒有靜態路徑圖（S1），只放文字連結到 `https://www.jma.go.jp/bosai/map.html#contents=typhoon`（11/23 開啟確認）。CWA 路徑圖的檔名規則仍是 [待驗證]，V1 不顯示圖，只放連結到 `https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html`。RSS 的 `…sair.jpg`（衛星疊加圖）不在契約中，不顯示 |
+| I2 | 時間 | 分開顯示：**來源**（JTWC 警報圖、第 N 報、最終報標記）、**警報發布時間**（`issued_at`）、**圖像對應的分析時間**（`fix.analysis_time`）、**本站讀取時間**（`analysis.json` 的 `fetched_at`），都同時寫 UTC 與臺灣時間。JTWC 每報都使用同一個圖檔網址（`wp3126.gif` 被覆蓋），所以固定註明「顯示的圖可能比上列報次新；以圖上的時間為準」 |
+| I3 | 後端 | **不改**：`tropical_official` 的輸出、契約、驗證器、due 任務都不變（第 11 節 S11 列的「若需要」不成立）。理由：CWA 圖需要新增對 `www.cwa.gov.tw` 的請求與未查證的檔名規則；驗證器只允許 JTWC 的 `graphic_url`，放寬後含 CWA 圖的快照會被舊程式拒絕（同 S10 的 L3，無法 revert）。CWA 圖列為 V1 之後 |
+| I4 | 外連的可用性 | S1：從第三方來源以 `<img>` 載入成功、自訂 Referer 也是 200；有 `X-Frame-Options: SAMEORIGIN`（不用 iframe）；沒有 CORS 標頭（不 fetch、不畫進 canvas）。11/23 從本機預覽（`http://localhost:5183`）實際載入 `sh0427.gif`（南半球 04P 最終報，1885×1065）成功。從 github.io 網域載入、系統結束後圖檔被移除時的回應，仍為 [待驗證] |
+| I5 | 失效與檢查 | 沿用 `SourceImage.jsx` 的做法（`onError` 後改顯示「此官方圖片目前無法取得」與官方連結），但**不 import 它**（它在主 chunk，從颱風 chunk 引用可能改變主 chunk）；颱風 chunk 內另寫同樣行為的元件，以 `key={src}` 重設。前端以與後端驗證器相同的規則（`https://www.metoc.navy.mil/jtwc/products/` 加 1–80 個 `[A-Za-z0-9_.-]` 加 `.gif`）檢查 `graphic_url`，不符就當成沒有圖。失效時的官方連結指向 JTWC 首頁（`product_url` 是 `.tcw`，瀏覽器會直接下載） |
+| I6 | 站內連結 | 共用區塊「相關環境圖資（本站既有頁面）」，以 react-router `Link` 連到 `/images/satellite`、`/images/cimss_wind_analysis`、`/images/cimss_steering_flow`、`/images/tchp`、`/images/sst`，並說明「不是針對個別熱帶系統的產品」。放在各系統的 Imagery 分頁與 `/tropical` 總覽（沒有系統、UNAVAILABLE 時也顯示）。那 5 個頁面、`App.jsx`、`image-types.js` 不改 |
+| I7 | 署名定稿 | 署名區標題拿掉「暫定」。JTWC 依 notices 原文（17 U.S.C. §403：含 JTWC 資料、不受著作權保護、公眾可自由使用；主要供美國政府使用）。NOAA／NWS 依 `41e395c4_disclaimer.txt`（§403、不得暗示背書、修改後不得當成官方資料）。**ECMWF** 逐字採用條款中「services created with this ECMWF data product」的措辭：`Copyright statement: Copyright "This service is based on data and products of the European Centre for Medium-Range Weather Forecasts (ECMWF)".`、`Source www.ecmwf.int`、Licence Statement（CC BY 4.0 與連結）、Disclaimer 原句，加上中文的修改說明。**JMA**：`出典：気象庁ホームページ（https://xml.kishou.go.jp/xmlpull.html）`，加工註記照 coment.html 的記載例寫成 `気象庁「気象庁防災情報XMLフォーマット形式電文の公開（PULL型）」（URL）を加工して作成`，並註明非日本政府製作。**CWA**：照附件「顯名聲明」：`提供機關／交通部中央氣象署 颱風消息與警報-熱帶氣旋路徑（W-C0034-005）`、釋出聲明原句、「政府資料開放授權條款」連結 `https://data.gov.tw/license`。**Natural Earth**：條款寫明公有領域、不需署名；仍標示來源與 `Made with Natural Earth.` |
+| I8 | H17 (1) 的拆分 | 兩個建置開關各自都涉及 NOAA 與 ECMWF，所以拆的是**每一行列出的產品名稱**：`VITE_TROPICAL_MODEL_LAYERS` 開啟時列 GFS、AIGFS／IFS、AIFS；`VITE_TROPICAL_ENSEMBLE_LAYERS` 開啟時列 GEFS、AIGEFS／IFS ENS、AIFS ENS；兩者都關時沒有 NOAA、ECMWF 與模式說明三行。H17 (1) 自此解除 |
+| I9 | 分頁內容 | 分頁名稱改為「圖像」。只用已讀過的 `analysis.json`，**不新增任何請求**（圖片由瀏覽器載入）。JTWC 一張卡：讀取中、讀取失敗或區塊不合（「暫時無法取得」）、`null`（「目前沒有這個系統的資料」）、沒有或不合規則的 `graphic_url`（「這一報的資料沒有 JTWC 警報圖的連結」）各有提示；已結束的系統另寫「官方圖片可能已被移除」。JMA、CWA 各一張卡寫本站沒有圖，連到官方頁。分頁開頭以短標註指向頁尾署名（`#tc-attribution-title`，7.6）|
+| I10 | 沒有活躍系統時 | Imagery 是各系統的分頁，沒有系統時進不去；總覽頁顯示 I6 的站內連結區塊。`?storm=…&tab=imagery` 找不到系統時照舊顯示「找不到這個系統」 |
+| I11 | 本機預覽 | `.runtime/s11-preview/`（不入版控）：沿用 S7／S8b／S10 的情境；每個情境都明確設定 `graphic_url`。預覽專用的 Vite 外掛只在預覽時讓網址規則也接受 `http://localhost:5183/__s11/`，由本機提供 S1 保存的 `wp3126.gif`；產品程式不變 |
+| I12 | 分支 | worktree `.claude/worktrees/s11-imagery`，分支 `feature/tropical-imagery`，基準 `0e67205` |
+| I13 | 驗證 | 前端完整測試（三種時區）、ESLint、`build:pages`＋`verify_pages_build.py`、主 chunk 與 `dist/data` 比對；沒有後端變更，所以不跑 Python 測試 |
 
 ---
 

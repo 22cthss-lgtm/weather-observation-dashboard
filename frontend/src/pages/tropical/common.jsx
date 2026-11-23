@@ -1,5 +1,7 @@
 // Shared pieces of the /tropical overview and storm pages (design.md 7.5, 7.6).
+import { Link } from "react-router-dom";
 import { REQUIRED_AGENCIES } from "../../tropical/status";
+import { SITE_IMAGE_LINKS } from "../../tropical/imagery";
 import { ENSEMBLE_LAYERS_ENABLED, MODEL_LAYERS_ENABLED } from "../../tropical/features";
 import {
   AGENCY_LABELS, AGENCY_SHORT, formatDualTime, formatPosition, formatPressure, formatWind, textOrNull,
@@ -19,50 +21,98 @@ export function DualTime({ stamp, missing = "—" }) {
 export const INTENSITY_NOTE = "強度不可跨機構比較：JTWC 為 1 分鐘平均風速，JMA 與 CWA 為 10 分鐘平均風速；"
   + "分類為各機構原文，未做對照。本頁不排序、不平均、不換算各機構的數值。";
 
-/** @param models show the NOAA/ECMWF lines (design.md 7.6, 11f F9, 11h H8); follows either build switch. */
-export function Attribution({ models = MODEL_LAYERS_ENABLED || Boolean(ENSEMBLE_LAYERS_ENABLED) }) {
+/** Product names in the NOAA and ECMWF lines, following each build switch on its own (design.md 11h H17 (1), 11i). */
+export function modelProductNames(models, ensemble) {
+  const join = parts => parts.filter(Boolean).join(" 與 ");
+  return {
+    noaa: join([models && "數值模式 GFS、AIGFS", ensemble && "Ensemble GEFS、AIGEFS"]),
+    ecmwf: join([models && "數值模式 IFS、AIFS", ensemble && "Ensemble IFS ENS、AIFS ENS"]),
+  };
+}
+
+function External({ href, children = href }) {
+  return <a href={href} target="_blank" rel="noreferrer">{children}</a>;
+}
+
+const JMA_XML_PAGE = "https://xml.kishou.go.jp/xmlpull.html";
+
+/**
+ * Final attribution (design.md 7.6, 11i), checked word by word against the terms captured in
+ * .runtime/tc-source-verification/terms/, s2/out/terms/ and .runtime/s11-imagery/terms/.
+ * The ECMWF wording is copied from the ECMWF terms ("services created with this ECMWF data product").
+ * @param models / ensemble follow the two build switches (VITE_TROPICAL_MODEL_LAYERS / _ENSEMBLE_LAYERS).
+ */
+export function Attribution({ models = MODEL_LAYERS_ENABLED, ensemble = Boolean(ENSEMBLE_LAYERS_ENABLED) }) {
+  const anyModel = Boolean(models || ensemble);
+  const names = modelProductNames(models, ensemble);
   return (
     <footer className="tc-attribution" aria-labelledby="tc-attribution-title">
-      <h3 id="tc-attribution-title">資料來源與署名（暫定文字，正式版本待定稿）</h3>
+      <h3 id="tc-attribution-title">資料來源與署名</h3>
       <ul>
+        {/* Sentences are kept on one line each: a JSX line break inside Chinese text would become a space. */}
         <li>
-          <strong>JTWC：</strong>本頁含美國聯合颱風警報中心（JTWC）資料，該資料不受著作權保護（17 U.S.C. §403）。
-          JTWC 產品主要供美國政府機關使用，一般使用者請以本國氣象機關與區域專業氣象中心的資訊為準（臺灣以中央氣象署為準）。
-          本站未修改其內容後宣稱著作權。
+          <strong>JTWC：</strong>
+          {"本頁含美國聯合颱風警報中心（JTWC）資料，該資料不受著作權保護（17 U.S.C. §403），公眾可自由使用；警報圖由瀏覽器直接自 JTWC 網站載入。"}
+          {"JTWC 產品主要供美國政府機關使用，一般使用者請以本國氣象機關或世界氣象組織區域專業氣象中心的熱帶氣旋資訊為準（臺灣以中央氣象署為準）。"}
+          {"本站未修改其內容後宣稱著作權。"}
         </li>
         <li>
-          <strong>JMA：</strong>出典：気象庁ホームページ（
-          <a href="https://www.jma.go.jp/" target="_blank" rel="noreferrer">https://www.jma.go.jp/</a>
-          ）。本頁的表格與路徑圖是以氣象廳資料加工作成（気象庁のデータを加工して作成）；本站與日本政府無關，內容並非日本政府製作。
+          <strong>JMA：</strong>
+          {"出典：気象庁ホームページ（"}<External href={JMA_XML_PAGE} />{"）。"}
+          {"気象庁「気象庁防災情報XMLフォーマット形式電文の公開（PULL型）」（"}<External href={JMA_XML_PAGE} />{"）を加工して作成："}
+          {"本頁的表格與路徑圖由本站以氣象廳的颱風解析・預報電文加工作成，並非日本政府製作。"}
         </li>
         <li>
-          <strong>CWA：</strong>提供機關：交通部中央氣象署；資料：颱風消息資料集 W-C0034-005（正式資料名稱待確認）；
-          依「政府資料開放授權條款」使用。CWA 風速的平均期間依慣例視為 10 分鐘，尚未經官方文件確認。
+          <strong>CWA：</strong>
+          {"提供機關／交通部中央氣象署 颱風消息與警報-熱帶氣旋路徑（W-C0034-005）。"}
+          {"此開放資料依政府資料開放授權條款 (Open Government Data License) 進行公眾釋出，使用者於遵守本條款各項規定之前提下，得利用之。"}
+          {"（"}<External href="https://data.gov.tw/license">政府資料開放授權條款</External>{"）"}
+          {"CWA 風速的平均期間依慣例視為 10 分鐘，尚未經官方文件確認。"}
         </li>
-        {models ? (
+        {anyModel ? (
           <>
             <li>
-              <strong>NOAA／NWS（數值模式 GFS、AIGFS 與 Ensemble GEFS、AIGEFS）：</strong>本頁含美國國家氣象局（NOAA／NWS）的熱帶氣旋追蹤資料，
-              該資料不受著作權保護（17 U.S.C. §403）。本站與 NOAA／NWS 無關，亦未獲其背書；
-              資料經本站轉換格式與篩選，不是官方資料的原樣呈現。
+              <strong>NOAA／NWS（{names.noaa}）：</strong>
+              {"本頁含美國國家氣象局（NOAA／NWS）的熱帶氣旋追蹤資料，該資料不受著作權保護（17 U.S.C. §403）。"}
+              {"本站與 NOAA／NWS 無關，亦未獲其背書；資料經本站轉換格式與篩選，不是官方資料的原樣呈現。"}
             </li>
             <li>
-              <strong>ECMWF（數值模式 IFS、AIFS 與 Ensemble IFS ENS、AIFS ENS）：</strong>本頁的 IFS、AIFS 與 IFS ENS、AIFS ENS 路徑以歐洲中期天氣預報中心的資料與產品為基礎
-              （based on data and products of the European Centre for Medium-Range Weather Forecasts (ECMWF)），
-              著作權屬 ECMWF，依 CC BY 4.0 授權使用。本站已修改原始資料：轉換格式、只保留西北太平洋已識別的系統、只保留路徑欄位。
-              ECMWF 不對本站的內容負責。完整的署名、著作權與免責聲明原文待定稿。
+              <strong>ECMWF（{names.ecmwf}）：</strong>
+              {'Copyright statement: Copyright "This service is based on data and products of the European Centre for Medium-Range Weather Forecasts (ECMWF)". '}
+              {"Source "}<External href="https://www.ecmwf.int/">www.ecmwf.int</External>{" "}
+              {"Licence Statement: This ECMWF data is published under a Creative Commons Attribution 4.0 International (CC BY 4.0). "}
+              <External href="https://creativecommons.org/licenses/by/4.0/" />{" "}
+              {"Disclaimer: ECMWF does not accept any liability whatsoever for any error or omission in the data, their availability, or for any loss or damage arising from their use. "}
+              {`修改說明：本站已修改原始資料——由 BUFR 轉換為 JSON、只保留西北太平洋已識別的熱帶系統、只保留路徑欄位（位置、中心氣壓、10 m 最大風${ensemble ? "，以及 Ensemble 成員編號與原始類型代碼" : ""}）。`}
             </li>
             <li>
-              數值模式路徑是模式的原始輸出，非官方預報，亦非本站預報；模式風速是 10 m 最大風，沒有平均期間，不可與機構的強度比較。
+              {`${models && ensemble ? "數值模式與 Ensemble 成員" : models ? "數值模式" : "Ensemble 成員"}路徑是模式的原始輸出，非官方預報，亦非本站預報；模式風速是 10 m 最大風，沒有平均期間，不可與機構的強度比較。`}
             </li>
           </>
         ) : null}
         <li>
-          <strong>底圖：</strong>陸地輪廓取自 Natural Earth（公有領域），經本站裁切與簡化。
+          <strong>底圖：</strong>陸地輪廓取自 Natural Earth（公有領域；Made with Natural Earth.），經本站裁切與簡化。
         </li>
         <li>{INTENSITY_NOTE}</li>
       </ul>
     </footer>
+  );
+}
+
+/** Links to the site's existing image pages (design.md 11i); those pages are not changed. */
+export function SiteImageLinks() {
+  return (
+    <section className="tc-section tc-site-links" aria-labelledby="tc-site-links-title">
+      <h3 id="tc-site-links-title">相關環境圖資（本站既有頁面）</h3>
+      <p className="tc-note">
+        以下是本站其他頁面的區域或全域環境圖，不是針對個別熱帶系統的產品；各圖的來源與時間以該頁顯示為準。
+      </p>
+      <ul className="tc-plain-list">
+        {SITE_IMAGE_LINKS.map(item => (
+          <li key={item.to}><Link to={item.to}>{item.label}</Link>：{item.description}</li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

@@ -13,6 +13,7 @@ import {
 } from "../../tropical/format";
 import { AgencySummary, DualTime, INTENSITY_NOTE } from "./common";
 import ForecastPanel from "./ForecastPanel";
+import ImageryPanel from "./ImageryPanel";
 import { REQUEST_TIMEOUT_MS, useForecastFiles } from "./useForecastFiles";
 const KINDS = ["analysis", "forecast"];
 
@@ -20,7 +21,7 @@ export const TABS = [
   { id: "overview", label: "總覽" },
   { id: "forecast", label: "預報路徑" },
   { id: "analysis", label: "各機構分析" },
-  { id: "imagery", label: "圖像（尚未開放）" },
+  { id: "imagery", label: "圖像" },
 ];
 
 /**
@@ -279,7 +280,9 @@ export default function StormDetail({
           <ForecastTab storm={storm} files={files} cache={cache} now={now} modelsEnabled={modelsEnabled}
             ensembleEnabled={Boolean(ensembleEnabled)} />
         ) : null}
-        {tab === "imagery" ? <p className="status-message">圖像分頁尚未開放。</p> : null}
+        {tab === "imagery" ? (
+          <ImageryPanel storm={storm} analysis={files.analysis} state={blockState(files.analysis, "jtwc")} />
+        ) : null}
       </TabBoundary>
     </article>
   );

@@ -223,15 +223,28 @@ test.each(["2026-JMA-TC2638", "x", "2026-jma-tc2638/../a", "%3Cscript%3E"])(
     expect(screen.queryByRole("navigation", { name: "系統資料分頁" })).toBeNull();
   });
 
-test("attribution names CWA, JMA and JTWC and is marked provisional", async () => {
+test("attribution names CWA, JMA and JTWC in its final wording (S11)", async () => {
   serve(makeIndex());
   await renderPage();
   const footer = screen.getByRole("contentinfo");
-  expect(within(footer).getByText(/暫定文字/)).toBeTruthy();
-  // JTWC, and NOAA/NWS when the model layers are built in (design.md 11f F9).
-  expect(within(footer).getByText(/JTWC）資料，該資料不受著作權保護（17 U\.S\.C\. §403）/)).toBeTruthy();
+  expect(within(footer).queryByText(/暫定|待定稿|待確認/)).toBeNull();
+  expect(within(footer).getByText(/JTWC）資料，該資料不受著作權保護（17 U\.S\.C\. §403），公眾可自由使用/)).toBeTruthy();
   expect(within(footer).getByText(/出典：気象庁ホームページ/)).toBeTruthy();
-  expect(within(footer).getByText(/交通部中央氣象署/)).toBeTruthy();
+  expect(within(footer).getByText(/提供機關／交通部中央氣象署 颱風消息與警報-熱帶氣旋路徑（W-C0034-005）/)).toBeTruthy();
+});
+
+test.each([
+  ["with storms", makeIndex(), "以下為各機構目前發報中的系統。"],
+  ["with no active system", makeIndex({ status: "OK_NO_STORMS", storms: [] }), "目前無活躍熱帶系統。"],
+  ["when the index is unavailable", null, "熱帶系統資料暫時無法取得"],
+])("the overview links the site's existing image pages %s (review S1)", async (_, index, banner) => {
+  serve(index);
+  await renderPage();
+  expect(pageText()).toContain(banner);
+  const links = screen.getByRole("region", { name: "相關環境圖資（本站既有頁面）" });
+  expect(within(links).getAllByRole("link").map(link => link.getAttribute("href"))).toEqual([
+    "/images/satellite", "/images/cimss_wind_analysis", "/images/cimss_steering_flow", "/images/tchp", "/images/sst",
+  ]);
 });
 
 test("STALE with storms uses past-tense wording, not the current-status sentence", async () => {
