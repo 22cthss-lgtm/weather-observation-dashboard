@@ -73,6 +73,9 @@ nav a {
 .dashboard-hero {
   position: relative;
   overflow: hidden;
+  /* A grid item with aspect-ratio does not stretch by default; without an explicit
+     width the 240px min-height forces a 768px width and overflows narrow screens. */
+  width: 100%;
   min-height: 240px;
   aspect-ratio: 16 / 5;
   border-radius: 20px;
@@ -129,6 +132,26 @@ nav a {
   font-size: 0.95rem;
   font-weight: 600;
   text-align: center;
+}
+
+@media (max-width: 640px) {
+  .dashboard-hero {
+    aspect-ratio: auto;
+  }
+
+  .dashboard-hero-image {
+    position: absolute;
+    inset: 0;
+  }
+
+  .dashboard-hero-overlay {
+    position: relative;
+    min-height: 240px;
+  }
+
+  .dashboard-hero-links {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .dashboard-sections {
