@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import TropicalPage from "./pages/TropicalPage";
 import { NOW, cempaka, endedStorm, makeIndex } from "./tropical/test-fixtures";
@@ -336,13 +336,18 @@ test("an unreadable index with a storm parameter reads no storm file", async () 
 
 test("a stalled storm file ends as unavailable after the timeout", async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
-  vi.stubGlobal("fetch", vi.fn((url, { signal }) => {
+  const request = vi.fn((url, { signal }) => {
     if (url === INDEX_URL) return Promise.resolve({ ok: true, json: async () => makeIndex() });
     return new Promise((_, reject) => signal.addEventListener("abort", () => reject(new Error("aborted"))));
-  }));
+  });
+  vi.stubGlobal("fetch", request);
   render(<MemoryRouter initialEntries={[`/tropical?storm=${ID}&tab=analysis`]}><TropicalPage getNow={() => NOW} /></MemoryRouter>);
   await screen.findByRole("navigation", { name: "系統資料分頁" });
   expect(screen.getAllByText("讀取中…").length).toBeGreaterThan(0);
+  // The abort timers start with the storm-file requests, in an effect that can run after the
+  // loading text is first shown. Advance the clock only once both requests have been made.
+  await waitFor(() => expect(requested(request)).toEqual(expect.arrayContaining(
+    [fileUrl(ID, "analysis"), fileUrl(ID, "forecast")])));
   await act(async () => { vi.advanceTimersByTime(15001); });
   await settle();
   expect(screen.getByText("各機構的詳細分析資料暫時無法取得。")).toBeTruthy();
