@@ -18,6 +18,7 @@
 | `jtwc_wp3126_final.tcw` | 同上（警報 #22，最終報）| 2026-11-12 約 11:05 | 否 |
 | `jtwc_cp0426_warning23.tcw` | `https://www.metoc.navy.mil/jtwc/products/cp0426.tcw` | 2026-11-12 約 11:05 | 否 |
 | `jtwc_rss_no_wp_systems_20261115.xml` | `https://www.metoc.navy.mil/jtwc/rss/jtwc.rss` | 2026-11-15 17:43（S4 真來源測試）| 否。西北太平洋與中／東太平洋項目都寫 `No Current Tropical Cyclone Warnings.`；南半球項目列有 04P |
+| `jtwc_rss_all_quiet_20261126.xml` | `https://www.metoc.navy.mil/jtwc/rss/jtwc.rss` | 2026-11-26 12:40（JTWC `parse_error` 調查，唯讀抓取一次）| 否。全球沒有任何警報時的合併格式：沒有分洋區項目，只有 `No Active Tropical Warnings in …` 一項與天氣諮詢項目 |
 | `jma_targetTc_empty_20261115.json` | `https://www.jma.go.jp/bosai/typhoon/data/targetTc.json` | 2026-11-15 17:43 | 否（內容為 `[]`）|
 | `jma_extra_feed_no_vptw_cropped_20261115.xml` | `https://www.data.jma.go.jp/developer/xml/feed/extra.xml` | 2026-11-15 17:43 | **是**：241 筆條目只保留前 2 筆與最後 1 筆；原檔沒有任何 VPTW60 |
 

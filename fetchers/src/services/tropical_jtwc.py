@@ -17,6 +17,13 @@ PRODUCT_LINK = re.compile(r'https://www\.metoc\.navy\.mil/jtwc/products/[A-Za-z0
 WNP_GUID = 'NWPAC-NIO-WARNINGS'
 CPAC_GUID = 'EPAC-CPAC-WARNINGS'
 NO_WARNINGS_TEXT = 'No Current Tropical Cyclone Warnings.'
+# When no basin anywhere has a warning, the feed drops the per-basin items and
+# carries one combined item instead [observed 2026-11-26]. Both its title and its
+# text must name the western North Pacific and the central/eastern Pacific.
+ALL_QUIET_TITLE = re.compile(r'\ANo Active Tropical Warnings in the Northwest Pacific, North Indian Ocean, '
+                             r'Central Pacific, Eastern Pacific\b')
+ALL_QUIET_TEXT = re.compile(r'\AThere are no active tropical warnings in the Northwest Pacific/North Indian Ocean, '
+                            r'Central/Eastern Pacific\b')
 FINAL_WARNING_TEXT = 'final warning'
 SYSTEM_HEADER = re.compile(r'\b([0-9]{2}[A-Z])\s*\(([^)]*)\)\s*Warning\s*#\s*([0-9]+)')
 # W: western North Pacific. C/E: central/eastern Pacific, included only once
@@ -76,12 +83,23 @@ def parse_rss(body):
         root = ET.fromstring(body)
     except ET.ParseError:
         raise SourceFailure('parse_error') from None
-    items = {}
+    items, all_quiet, any_header = {}, False, False
     for item in root.iter('item'):
         guid = (item.findtext('guid') or '').strip()
+        title = re.sub(r'\s+', ' ', item.findtext('title') or '').strip()
+        description = item.findtext('description') or ''
+        plain = re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]*>', ' ', description))).strip()
+        # Also the tag-free text, so a header split by markup or written with entities still counts.
+        any_header = any_header or any(SYSTEM_HEADER.search(text) for text in (title, description, plain))
         if guid in (WNP_GUID, CPAC_GUID):
-            items[guid] = item.findtext('description') or ''
+            items[guid] = description
+        elif ALL_QUIET_TITLE.match(title) and ALL_QUIET_TEXT.match(plain):
+            all_quiet = True
     if WNP_GUID not in items:
+        # Only the combined "nothing anywhere" item, with no basin item and no
+        # system anywhere in the feed, is a confirmed answer of no systems.
+        if all_quiet and not items and not any_header:
+            return [], True
         raise SourceFailure('parse_error')
     # Without the central/eastern item a system that crossed 180 would be missed silently.
     systems, complete = [], CPAC_GUID in items

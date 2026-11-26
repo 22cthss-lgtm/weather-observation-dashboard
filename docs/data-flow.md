@@ -9,6 +9,7 @@
 - 2026-11-23：S10 里程碑（Ensemble 路徑與 cycle 選擇，S9＋S10）快轉進 `main`（`34ad89b`），新增第 16 項 due 任務 `tropical_ensemble`，見第 16 節；第 1–15 節的流程沒有改變（`http_client` 只新增一個預設為 `None`、行為不變的選用參數）。
 - 2026-11-24：V1 里程碑（S11：颱風頁的圖像分頁、站內圖資連結、署名定稿）快轉進 `main`（`659a7f8`）：只改前端的颱風 lazy chunk，沒有新增 due 任務、資料路徑、快照白名單或驗證器，第 1–16 節的流程沒有改變；JTWC 警報圖由瀏覽器直接自官方網址載入，本站不保存圖檔。上線後 Pages chain 45363271870（#2372）、45364930134（#2373）皆成功並部署，沒有重置排程的跡象（refresh 7 秒）。
 - 2026-11-26（`fix/separate-test-data`，基準 `e8aa2dc`）：原本追蹤在 `frontend/public/data/` 的 20 個 JSON 原樣移到 `fetchers/tests/fixtures/public-data/`，作為 Python 與前端測試的固定資料；`frontend/public/data/` 改為不納入版本控制；`update_snapshot.py` 第一次的預設 seed 改用固定資料。發布流程、快照、到期任務與前端讀取路徑都沒有改變，但發布 job 的測試改讀固定資料，不再讀換入的快照資料（第 4 節）。
+- 2026-11-26（`fix/jtwc-all-quiet-feed`，基準 `9e2024b`）：JTWC RSS 在全球無警報時只給一個合併項目，`tropical_official` 的 JTWC 來源因此從 11/25 18:12Z 起一直是 `parse_error`。現在接受這個項目，條件很嚴格，見 design.md 的 JTWC `state` 說明。只改 `tropical_jtwc.py` 的 RSS 判定，其餘流程、資料格式與排程不變。
 - **維護要求：之後修改資料流、Fetcher、恢復／發布或前端讀取行為時，應同步更新本文件、盤點日期與程式基準。**
 
 HANDOFF.md 與本機 .runtime 驗收證據不納入版本控制；相關連結供本機維護使用。

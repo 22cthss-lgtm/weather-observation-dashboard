@@ -743,6 +743,20 @@ class TaskTests(unittest.TestCase):
             self.assertEqual([source['active_count'] for source in index['sources'].values()], [0, 0, 0])
             self.assertEqual(len(transport.calls), 4)
 
+    def test_real_all_quiet_jtwc_feed_keeps_jtwc_ok(self):
+        # JTWC's combined "no warnings anywhere" item (2026-11-26) used to make JTWC a parse_error.
+        routes = {CWA_URL: fixture('cwa_datastore_cempaka.json'),
+                  JMA_FEED: fixture('jma_extra_feed_no_vptw_cropped_20261115.xml'),
+                  JMA_TARGET: fixture('jma_targetTc_empty_20261115.json'),
+                  JTWC_RSS: fixture('jtwc_rss_all_quiet_20261126.xml')}
+        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
+            index, transport = self.update(Path(directory), routes, datetime(2026, 11, 26, 12, 40, tzinfo=UTC))
+            self.assertEqual((index['status'], index['storms']), ('OK_NO_STORMS', []))
+            jtwc = index['sources']['jtwc']
+            self.assertEqual((jtwc['state'], jtwc['error_code'], jtwc['active_count']), ('ok', None, 0))
+            self.assertEqual(jtwc['last_ok_at'], '2026-11-26T12:40:00Z')
+            self.assertEqual(len(transport.calls), 4)
+
     def test_all_failed_raises_and_leaves_previous_file_untouched(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
             root = Path(directory)

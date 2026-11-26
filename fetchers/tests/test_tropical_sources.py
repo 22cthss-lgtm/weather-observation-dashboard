@@ -643,6 +643,84 @@ class RealNoSystemTests(unittest.TestCase):
         self.assertEqual(result.records[0]['analysis_time'], datetime(2026, 11, 11, 6, tzinfo=UTC))
 
 
+ALL_QUIET = 'jtwc_rss_all_quiet_20261126.xml'
+QUIET_TITLE = (b'No Active Tropical Warnings in the Northwest Pacific, North Indian Ocean, Central Pacific, '
+               b'Eastern Pacific, or Southern Hemisphere')
+QUIET_TEXT = (b'There are no active tropical warnings in the Northwest Pacific/North Indian Ocean, '
+              b'Central/Eastern Pacific')
+BASIN_ITEM = (b"<item><title>Current Central/Eastern Pacific Tropical Systems</title>"
+              b"<description><![CDATA[<ul><li>No Current Tropical Cyclone Warnings.</li></ul>]]></description>"
+              b"<guid>EPAC-CPAC-WARNINGS</guid></item>")
+ADVISORY_LINK = b'<li><b><a href="https://www.metoc.navy.mil/jtwc/products/abpwweb.txt"'
+
+
+def sh_item(title, description):
+    return (b'<item><title>' + title + b'</title><description><![CDATA[' + description
+            + b']]></description><guid>SH-WARNINGS</guid></item>')
+
+
+class AllQuietFeedTests(unittest.TestCase):
+    """Real feed of 2026-11-26 12:38Z: no basin anywhere had a warning, so the per-basin items were
+    replaced by one combined item (it failed as parse_error from 2026-11-25 18:12Z until this fix)."""
+
+    def fetch(self, body):
+        return run(tropical_jtwc.fetch_jtwc, {JTWC_RSS: body})
+
+    def test_real_all_quiet_feed_is_ok_with_no_systems(self):
+        body = fixture(ALL_QUIET)
+        self.assertNotIn(b'NWPAC-NIO-WARNINGS', body)
+        self.assertIn(QUIET_TITLE, body)
+        result, transport = self.fetch(body)
+        self.assertEqual((result.state, result.error_code, result.records, result.listed), ('ok', None, [], set()))
+        self.assertEqual(transport.urls, [JTWC_RSS])
+        self.assertEqual(tropical_jtwc.parse_rss(body), ([], True))
+
+    def test_combined_item_must_name_both_pacific_basins_in_title_and_text(self):
+        body = fixture(ALL_QUIET)
+        variants = {
+            'title without the central/eastern Pacific': body.replace(
+                QUIET_TITLE, b'No Active Tropical Warnings in the Northwest Pacific or North Indian Ocean'),
+            'title saying something else': body.replace(
+                QUIET_TITLE, b'Active Tropical Warnings in the Northwest Pacific'),
+            'title with words before it': body.replace(
+                QUIET_TITLE, b'Correction: ' + QUIET_TITLE),
+            'text without the central/eastern Pacific': body.replace(
+                QUIET_TEXT, b'There are no active tropical warnings in the Northwest Pacific/North Indian Ocean'),
+            'text with words before it': body.replace(QUIET_TEXT, b'Until 12Z: ' + QUIET_TEXT),
+            'text missing': body.replace(QUIET_TEXT, b''),
+        }
+        for name, variant in variants.items():
+            with self.subTest(name):
+                self.assertNotEqual(variant, body)
+                result, _ = self.fetch(variant)
+                self.assertEqual((result.state, result.error_code), ('failed', 'parse_error'))
+
+    def test_combined_item_is_not_trusted_next_to_a_system_or_a_basin_item(self):
+        body = fixture(ALL_QUIET)
+        def add_item(item):
+            return body.replace(b'</channel>', item + b'</channel>', 1)
+        variants = {
+            'system header in another item': body.replace(
+                ADVISORY_LINK, b'<li><b>Typhoon 32W (Tester) Warning #01</b></li>' + ADVISORY_LINK, 1),
+            'header split by markup': add_item(sh_item(
+                b'Current Southern Hemisphere Tropical Systems', b'<b>Cyclone 05P (Tester)</b> <b>Warning #01</b>')),
+            'header written with an entity': add_item(sh_item(
+                b'Current Southern Hemisphere Tropical Systems', b'Cyclone 05P (Tester) Warning &#35;01')),
+            'header in another item title': add_item(sh_item(b'Cyclone 05P (Tester) Warning #01', b'See product.')),
+            'central Pacific item': add_item(BASIN_ITEM),
+        }
+        for name, variant in variants.items():
+            with self.subTest(name):
+                self.assertNotEqual(variant, body)
+                result, _ = self.fetch(variant)
+                self.assertEqual((result.state, result.error_code), ('failed', 'parse_error'))
+
+    def test_feed_without_any_known_item_still_fails(self):
+        body = fixture(ALL_QUIET).replace(QUIET_TITLE, b'JTWC Feed Maintenance')
+        result, _ = self.fetch(body)
+        self.assertEqual((result.state, result.error_code), ('failed', 'parse_error'))
+
+
 # --- S6: per-storm file content --------------------------------------------------------
 
 def assert_blocks_valid(test, record):

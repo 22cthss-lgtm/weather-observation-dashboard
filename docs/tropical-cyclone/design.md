@@ -516,9 +516,18 @@ CEMPAKA 已於 11/11 消散，PENA 仍在換日線以東。固定 UA、間隔 1.
 |---|---|---|
 | CWA | HTTP 200、JSON 可解析、結構符合預期 | 颱風陣列存在，且為空或每一筆都不活躍。**其他長相一律視為 `parse_error`**（無颱風時的實際回應是 [待驗證]，不猜測） |
 | JMA | 見下方「JMA 的判定」 | 同左 |
-| JTWC | RSS 取得並解析成功、找得到西北太平洋項目；RSS 列出的每個相關系統的 `.tcw` 都取得並解析成功 | 西北太平洋項目寫 `No Current Tropical Cyclone Warnings.` [實測：南半球項目]，或列出的系統全部是 Final Warning 或不在範圍內 |
+| JTWC | RSS 取得並解析成功、找得到西北太平洋項目（或下方的全域無警報項目）；RSS 列出的每個相關系統的 `.tcw` 都取得並解析成功 | 西北太平洋項目寫 `No Current Tropical Cyclone Warnings.` [實測：南半球項目]，或列出的系統全部是 Final Warning 或不在範圍內；或 RSS 只有全域無警報項目（見下方） |
 
 - 403、404、逾時、5xx、解析失敗都是 `failed`，**一律不當成「沒有颱風」**。JTWC 不存在的產品回 403 [實測]，同樣是 `failed`。
+- JTWC 的全域無警報項目 [實測 2026-11-26]：全球所有洋區都沒有警報時，RSS 不再分洋區列出 `NWPAC-NIO-WARNINGS`／`EPAC-CPAC-WARNINGS`，而是只有一個合併項目（guid 是 `jtwc.html` 網址，標題 `No Active Tropical Warnings in the Northwest Pacific, North Indian Ocean, Central Pacific, Eastern Pacific, or Southern Hemisphere`）。
+  - 判定為「成功且沒有系統」必須同時符合：
+    - 標題與內文都明確涵蓋西北太平洋和中／東太平洋；
+    - 沒有任何分洋區項目；
+    - 整個 RSS 都沒有系統標頭。
+  - 其他情況仍是 `parse_error`。
+  - 2026-11-25 18:12Z 起，這個格式讓 JTWC 一直顯示 `parse_error`，直到 `fix/jtwc-all-quiet-feed`。
+  - 只要任一洋區有系統，RSS 就是分洋區格式（2026-11-15 南半球有 04P 時的樣本 [實測]）。西北太平洋或中太平洋出現系統時是否也這樣，尚待下一個系統出現時驗證。
+  - 「整個 RSS 沒有系統標頭」同時檢查標題、原始內文，以及去掉標籤、還原字元實體後的內文。
 - JTWC 要求「每個相關系統的 `.tcw` 都成功」包含中／東太平洋項目的系統：不抓到 `.tcw` 就不知道它是否已越線進入範圍，所以任何一個失敗都讓 JTWC 整個 `failed`（保留舊資料）。這比較嚴格，但 JTWC 不是必要來源，代價只是顯示 `PARTIAL`。
 
 **JMA 的判定**（`extra.xml`、`targetTc.json`、長期 feed 三者的組合；抓取流程見 5.3）
