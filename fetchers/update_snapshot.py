@@ -22,7 +22,8 @@ def main(argv=None):
     parser.add_argument('types', nargs='*')
     parser.add_argument('--store', type=Path, default=ROOT / '.runtime/snapshots')
     parser.add_argument('--seed-data', type=Path, default=None,
-                        help='Explicit bootstrap JSON directory; used only without a saved snapshot')
+                        help='Bootstrap JSON directory, used only without a saved snapshot '
+                             '(default: the fixed test data in fetchers/tests/fixtures/public-data)')
     parser.add_argument('--previous-snapshot', type=Path, help='Explicit manifest snapshot to restore')
     args = parser.parse_args(argv)
     registered = registered_products()
@@ -30,7 +31,9 @@ def main(argv=None):
         parser.error('Unknown product')
     if args.seed_data and args.previous_snapshot:
         parser.error('Choose seed data or previous snapshot')
-    bootstrap = args.seed_data or ROOT / 'frontend/public/data'
+    # frontend/public/data is untracked local fetcher output and may not exist,
+    # so the first snapshot starts from the tracked fixed data instead.
+    bootstrap = args.seed_data or ROOT / 'fetchers/tests/fixtures/public-data'
     if (bootstrap.resolve().is_relative_to(args.store.resolve())
             or args.store.resolve().is_relative_to(bootstrap.resolve())
             or args.store.resolve().is_relative_to((ROOT / 'frontend/public').resolve())):

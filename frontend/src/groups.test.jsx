@@ -1,9 +1,8 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import App from "./App";
+import { readPublicData } from "./test-data";
 
 const collections = {
   cimss_wind_analysis: [
@@ -23,9 +22,9 @@ const collections = {
     ["seaice_antarctic_concentration", "Sea Ice Concentration"], ["seaice_antarctic_timeseries", "Time Series"]],
 };
 
-// Use actual successful Fetcher outputs; never write simulated data into public.
+// Use actual successful Fetcher outputs from the fixed test data; never write simulated data into it.
 const groups = Object.fromEntries(Object.keys(collections).map(type => [type,
-  JSON.parse(readFileSync(resolve(`public/data/images/${type}/latest.json`), "utf8")),
+  readPublicData(`images/${type}/latest.json`),
 ]));
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });

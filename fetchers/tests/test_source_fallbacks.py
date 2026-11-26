@@ -15,6 +15,7 @@ from src.history_reconciliation import history_scope
 from src.services.cwa_service import CWAService
 from src.services.kma_service import KMAService
 from src.http_client import HttpPolicy, _policy
+from public_fixture import PUBLIC_DATA
 
 NOW = datetime.fromisoformat('2026-10-30T18:35:00+08:00')
 POLICY = {'interval_seconds': 3600, 'max_rechecks': 3,
@@ -251,7 +252,7 @@ class KmaFallbackTests(unittest.TestCase):
 class NoAlternativeSourceTests(unittest.TestCase):
     def test_source_exhaustion_keeps_valid_latest_files_byte_for_byte(self):
         from update_images import update_image
-        public = Path(__file__).resolve().parents[2] / 'frontend/public/data/images'
+        public = PUBLIC_DATA / 'images'
         for kind in ('temperature', 'rainfall', 'weather_chart', '850hpa', 'sst', 'tchp'):
             with self.subTest(kind=kind), tempfile.TemporaryDirectory(dir=Path(__file__).parent) as root:
                 path = Path(root) / kind / 'latest.json'
@@ -294,7 +295,7 @@ class NoAlternativeSourceTests(unittest.TestCase):
         for r in (reply(500), reply(text='not json'), reply(text='{"records":{}}')):
             with self.subTest(code=r.status_code), tempfile.TemporaryDirectory(dir=Path(__file__).parent) as root:
                 output = Path(root) / 'latest.json'
-                original = (Path(__file__).resolve().parents[2] / 'frontend/public/data/rainfall/rankings/latest.json').read_bytes()
+                original = (PUBLIC_DATA / 'rainfall/rankings/latest.json').read_bytes()
                 output.write_bytes(original)
                 with patch.dict('os.environ', {'CWA_API_KEY': 'TEST_ONLY'}), \
                      patch('src.services.rainfall_observation_service.http_get', return_value=r) as get:

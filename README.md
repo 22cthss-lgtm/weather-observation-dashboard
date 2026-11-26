@@ -78,10 +78,11 @@ fetchers/            Python data fetchers, snapshot/publish tooling and tests
   src/services/      One module per data source
   policies/          Refresh intervals and retry backoff
   tests/             unittest suite (uses saved samples and fakes, no live fetches)
+    fixtures/public-data/  Fixed published JSON used as test data (Python and frontend)
 frontend/            React + Vite app
   src/pages/         Dashboard and detail pages
   scripts/           Pages build (pre-generates route entry pages)
-  public/data/       Published JSON (written by the fetchers)
+  public/data/       Local fetcher output for the dev server (not tracked by Git)
 docs/                Data flow, refresh and publishing notes, tropical-cyclone design
 .github/workflows/   Relay, Pages publishing, CI, CodeQL
 ```
@@ -100,9 +101,11 @@ npm install
 npm run dev
 ```
 
-Then open the address Vite prints. The app reads the JSON already in `frontend/public/data/`.
+Then open the address Vite prints. The app reads the JSON in `frontend/public/data/`. That folder is not tracked by Git, so on a fresh clone it is empty and the pages show no images. Fill it by fetching data once (below), or copy the fixed test data from `fetchers/tests/fixtures/public-data/` into `frontend/public/data/` for an offline preview. The published site never uses this folder: each publishing run replaces it with the verified snapshot.
 
-**Fetch fresh data** (optional; run from the repository root)
+If your checkout predates this change (when `frontend/public/data/` was tracked), copy that folder somewhere safe before you pull or switch branches. Git may refuse to pull while those files have local changes. Once they are no longer tracked, Git also removes them, or overwrites them when you check out an older commit, without asking. Copy the folder back afterwards.
+
+**Fetch fresh data** (run from the repository root; writes to `frontend/public/data/`)
 
 ```bash
 python -m venv .venv

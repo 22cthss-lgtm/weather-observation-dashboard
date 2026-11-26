@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from zipfile import ZipFile
+from public_fixture import PUBLIC_DATA
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -53,7 +54,7 @@ class PagesPackageTests(unittest.TestCase):
 
     def snapshot(self, base):
         from src.snapshots import export_snapshot
-        export_snapshot(Path(__file__).resolve().parents[2] / 'frontend/public/data', base / 'snapshot')
+        export_snapshot(PUBLIC_DATA, base / 'snapshot')
         return base / 'snapshot'
 
     def test_roundtrip_verified_explicit_snapshot_and_expiration(self):

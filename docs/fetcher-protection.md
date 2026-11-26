@@ -37,7 +37,7 @@ Authorization/API Key 等認證欄位會拒絕，不能把私人原始回應混�
 python -B fetchers/update_snapshot.py
 ```
 
-第一次以 `frontend/public/data` 為 seed，先逐份驗證，損壞資源不作有效備援；
+第一次預設以 `fetchers/tests/fixtures/public-data` 的固定資料為 seed（`frontend/public/data` 不納入版本控制，可能不存在），先逐份驗證，損壞資源不作有效備援；
 後續從 store/current.json 選取快照，驗證 manifest、檔案集合、hash 與資料契約
 後恢復到全新候選目錄。如果已選快照損壞，立即停止，不靜默退回舊版 repo JSON。
 

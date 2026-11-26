@@ -9,6 +9,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from verify_pages_build import APP_ROUTES, verify_build
 from src.snapshots import IMAGE_TYPES, read_resources
+from public_fixture import PUBLIC_DATA
 
 HTML = '<script src="/repo/assets/app.js"></script>'
 
@@ -17,7 +18,7 @@ class VerifyPagesBuildTests(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory(dir=Path(__file__).parent)
         self.base = base = Path(self._tmp.name)
-        source = Path(__file__).resolve().parents[2] / 'frontend/public/data'
+        source = PUBLIC_DATA
         shutil.copytree(source, base / 'input')
         shutil.copytree(source, base / 'dist/data')
         data, _ = read_resources(base / 'input')

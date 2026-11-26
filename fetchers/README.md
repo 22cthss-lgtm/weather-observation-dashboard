@@ -98,8 +98,9 @@ npm run build
 Python 測試覆蓋圖片時間、KMA API／回溯一致性、產品選擇、來源失敗、
 空／多筆／無效資料保留舊檔、圖片驗證失敗、原子替換及無 Flask／資料庫匯入。
 React 測試涵蓋根目錄與子路徑、讀取失敗不回退，以及 Dashboard／詳細頁呈現。
-整合測試直接使用 public 中真實 Fetcher 輸出，請先成功更新各測試所需的圖資與本階段當日／排行 JSON；
-單元測試不會將模擬資料寫入 public。
+整合測試使用 `fetchers/tests/fixtures/public-data/` 中固定的真實 Fetcher 輸出樣本（Python 與前端共用），
+不讀 `frontend/public/data/`，所以不需要先執行 Fetcher；單元測試也不會寫入 public。
+`frontend/public/data/` 是本機 Fetcher 的輸出位置，已列在 `.gitignore`，不納入版本控制。
 
 
 ## 第五階段：CIMSS 與 Sea Ice 群組
@@ -403,7 +404,7 @@ workflow 目前仍只有手動觸發，沒有啟用 schedule。
 - **隔離**：在自己的 `http_scope()` 內執行，請求預算和 13 項分開；部署判定的「本輪嘗試全部失敗」規則排除 `tropical_` 任務；
   任務失敗或寫出不合契約的檔時，`checked_update` 只還原 `tropical/official/` 前綴。
 - **清除**：只在 refresh 時，由 `snapshot_runner._prune_tropical` 刪除索引不再列出的系統檔；索引無效時不刪。報告欄位為 `pruned_tropical`。
-- **本機執行**：務必指定 `.runtime` 內的輸出位置，不帶 `--output-root` 會寫進 `frontend/public/data/`。
+- **本機執行**：不帶 `--output-root` 會寫進 `frontend/public/data/`。該資料夾已不納入版本控制，所以 git 不會出現變動，但會覆寫本機預覽資料；只想看抓取結果時，建議指定 `.runtime` 內的位置。
 
 ```powershell
 .\.venv\Scripts\python.exe -B fetchers\update_images.py tropical_official --output-root .runtime\<資料夾>\images

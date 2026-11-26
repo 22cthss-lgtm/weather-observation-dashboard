@@ -8,6 +8,7 @@
 - 2026-11-20：S8 里程碑（確定性模式路徑）快轉進 `main`（`be98041`），新增第 15 項 due 任務 `tropical_models`，見第 15 節；第 1–14 節的流程沒有改變。
 - 2026-11-23：S10 里程碑（Ensemble 路徑與 cycle 選擇，S9＋S10）快轉進 `main`（`34ad89b`），新增第 16 項 due 任務 `tropical_ensemble`，見第 16 節；第 1–15 節的流程沒有改變（`http_client` 只新增一個預設為 `None`、行為不變的選用參數）。
 - 2026-11-24：V1 里程碑（S11：颱風頁的圖像分頁、站內圖資連結、署名定稿）快轉進 `main`（`659a7f8`）：只改前端的颱風 lazy chunk，沒有新增 due 任務、資料路徑、快照白名單或驗證器，第 1–16 節的流程沒有改變；JTWC 警報圖由瀏覽器直接自官方網址載入，本站不保存圖檔。上線後 Pages chain 45363271870（#2372）、45364930134（#2373）皆成功並部署，沒有重置排程的跡象（refresh 7 秒）。
+- 2026-11-26（`fix/separate-test-data`，基準 `e8aa2dc`）：原本追蹤在 `frontend/public/data/` 的 20 個 JSON 原樣移到 `fetchers/tests/fixtures/public-data/`，作為 Python 與前端測試的固定資料；`frontend/public/data/` 改為不納入版本控制；`update_snapshot.py` 第一次的預設 seed 改用固定資料。發布流程、快照、到期任務與前端讀取路徑都沒有改變，但發布 job 的測試改讀固定資料，不再讀換入的快照資料（第 4 節）。
 - **維護要求：之後修改資料流、Fetcher、恢復／發布或前端讀取行為時，應同步更新本文件、盤點日期與程式基準。**
 
 HANDOFF.md 與本機 .runtime 驗收證據不納入版本控制；相關連結供本機維護使用。
@@ -127,6 +128,7 @@ flowchart TD
 | 公開 history／daily／排行 | `frontend/public/data/images/{radar,satellite,rainfall}/history/YYYY-MM-DD.json`；`images/rainfall/daily/latest.json`；`rainfall/rankings/latest.json` | 已成功時次與缺口、每日三圖、整理後排行；不含私有排程狀態 |
 | 公開熱帶系統 JSON | `frontend/public/data/tropical/official/index.json`；`tropical/official/storms/{cyclone_id}/{analysis,forecast}.json` | 2026-11-19 起由 `tropical_official` 產生（第 14 節）；允許但非必要，不在 `REQUIRED` 內；進快照、封裝、網站，與圖資同一份 ZIP |
 | 公開數值模式路徑 JSON | `frontend/public/data/tropical/models/index.json`；`tropical/models/storms/{cyclone_id}/{cycle}.json`（精簡格式） | S8 起由 `tropical_models` 產生（第 15 節）；同上，允許但非必要 |
+| 本機 `frontend/public/data` 與測試資料 | 本機的 `frontend/public/data/` 不納入版本控制（`.gitignore`），只是本機 Fetcher 輸出與 `npm run dev` 的來源；固定測試資料在 `fetchers/tests/fixtures/public-data/` | 上列 `frontend/public/data/...` 的路徑在 Runner 上指的是換入的快照資料。Python 與前端測試只讀固定測試資料，不讀本機輸出，也不讀 Runner 換入的快照資料（2026-11-26 起） |
 | 本機進度與鎖 | `.runtime/updater/status.json`、`watch.lock`、`update.lock` | 防止同輸出重疊更新、顯示本機進度；自訂輸出目錄使用雜湊子目錄 |
 | 本機隔離快照 | `.runtime/snapshots/snapshots/{id}/data`、manifest、reports、current.json | update_snapshot 的可信候選與目前指標；不自動部署 |
 | 雲端輸入 | `$RUNNER_TEMP/pages-input/weather-snapshot.zip`、`source-result.json`、`source-state.json` | 恢復的 ZIP、來源 metadata、相容 state；Runner 暫存 |

@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from public_fixture import PUBLIC_DATA
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -49,7 +50,7 @@ class DueCliTests(unittest.TestCase):
         from src.snapshots import export_snapshot
         with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
             root = Path(directory)
-            export_snapshot(Path(__file__).resolve().parents[2]/'frontend/public/data', root/'seed')
+            export_snapshot(PUBLIC_DATA, root/'seed')
             package = pack_snapshot(root/'seed', root/'input.zip')
             (root/'source-state.json').write_text('broken JSON')
             env = {'MODE':'publish','RETENTION_DAYS':'15','RUNNER_TEMP':str(root),

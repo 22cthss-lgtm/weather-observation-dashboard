@@ -6,6 +6,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from snapshot_fixtures import HISTORY_PATH, GAPS, history as history_fixture, write_seed
+from public_fixture import PUBLIC_DATA
 
 
 class SnapshotTests(unittest.TestCase):
@@ -44,7 +45,7 @@ class SnapshotTests(unittest.TestCase):
     def test_malformed_ranking_and_history_are_rejected(self):
         import copy
         from src.snapshots import validate_resource
-        source = Path(__file__).resolve().parents[2] / 'frontend/public/data'
+        source = PUBLIC_DATA
         ranking = json.loads((source / 'rainfall/rankings/latest.json').read_text(encoding='utf-8'))
         for field, bad in (('rank', True), ('station_name', {}), ('county', []), ('town', None)):
             data = copy.deepcopy(ranking)
@@ -209,14 +210,14 @@ class SnapshotTests(unittest.TestCase):
 
     def test_private_fields_and_credentials_cannot_enter_public_snapshot(self):
         from src.snapshots import validate_resource
-        source = Path(__file__).resolve().parents[2] / 'frontend/public/data/images/radar/latest.json'
+        source = PUBLIC_DATA / 'images/radar/latest.json'
         data = json.loads(source.read_text(encoding='utf-8'))
         for invalid in (dict(data, api_key='secret'), dict(data, image_url='https://example.com/a?Authorization=secret')):
             with self.assertRaises(ValueError):
                 validate_resource('images/radar/latest.json', invalid)
 
     def seed(self, root):
-        source = Path(__file__).resolve().parents[2] / 'frontend/public/data'
+        source = PUBLIC_DATA
         import shutil
         shutil.copytree(source, root, dirs_exist_ok=True)
 

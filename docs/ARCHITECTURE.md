@@ -2,7 +2,7 @@
 
 這份文件只描述系統**現在的樣子**：有哪些元件、資料怎麼流、各部分的程式在哪裡。不記錄歷史、事故或驗收過程。細節請看各節連到的文件。
 
-- 撰寫日期：2026-11-25（Asia/Taipei），程式基準：`origin/main` `9bdfd6e`。
+- 撰寫日期：2026-11-25（Asia/Taipei），程式基準：`origin/main` `9bdfd6e`；2026-11-26 更新測試資料位置（`fix/separate-test-data`）。
 - **維護要求：** 新增或移除 due 任務、資料路徑、workflow 或前端路由時，同步更新本文件與上面的程式基準。
 
 ## 1. 一句話總覽
@@ -54,7 +54,7 @@ flowchart LR
     BR -->|圖片直接載入| Sources
 ```
 
-本機另有一條不經雲端的路徑：`update_images.py`／`watch_images.py` 預設直接寫入 `frontend/public/data/`，只供本機開發與檢視，不會部署。那裡的 repo 版本是測試資料，所以本機執行時建議以 `--output-root` 指到 `.runtime`。
+本機另有一條不經雲端的路徑：`update_images.py`／`watch_images.py` 預設直接寫入 `frontend/public/data/`，只供本機開發與檢視，不會部署。這個資料夾不納入版本控制，所以寫入後 git 不會出現變動。
 
 ## 3. 執行路徑
 
@@ -92,7 +92,7 @@ flowchart LR
 | tropical_models | 1 小時 | NOAA、ECMWF | `tropical/models/index.json`、`storms/{id}/{cycle}.json` |
 | tropical_ensemble | 1 小時 | NOAA、ECMWF | `tropical/ensemble/index.json`、`storms/{id}/{cycle}/{model}.json` |
 
-- 前 13 項是「既有圖資」，後 3 項是熱帶系統專區。熱帶 3 項的 JSON 只在雲端產生並隨快照發布，repo 的 `frontend/public/data/` 裡沒有。
+- 前 13 項是「既有圖資」，後 3 項是熱帶系統專區。熱帶 3 項的 JSON 只在雲端產生並隨快照發布，repo 的測試資料（`fetchers/tests/fixtures/public-data/`）裡沒有。
 - 失敗時依各任務的 `retry_delays_seconds` 退避，最後一級持續使用。
 - 每項的來源網址、最新判定與特殊處理見 [data-flow.md 第 2 節](data-flow.md)（13 項）與第 14–16 節（熱帶 3 項）。
 
@@ -140,7 +140,8 @@ flowchart LR
 | 資料 | 位置 | 保存 |
 |---|---|---|
 | 公開 JSON | 網站 `/data/...` | 由快照決定，不 commit 回 repo |
-| repo 內的 `frontend/public/data/` | 10/27 的固定版本 | Python 與前端測試的測試資料，也供本機預覽；發布 job 會先換成快照資料，所以不會被部署 |
+| 測試資料 | `fetchers/tests/fixtures/public-data/`（10/27 的真實輸出，進版控） | Python 與前端測試共用的固定資料；`update_snapshot.py` 第一次的預設 seed |
+| 本機預覽資料 | `frontend/public/data/`（不進版控） | 本機 Fetcher 的輸出、`npm run dev` 讀取；發布 job 會換成快照資料，所以從不部署 |
 | 資料快照 | artifact `weather-snapshot`（ZIP＋manifest＋逐檔 SHA） | 15 天；分層保留：最新 6 版、48 小時內每 6 小時一版、14 天內每天一版，加上目前線上版 |
 | 排程狀態 | artifact `weather-scheduler-state` | 7 天，留最近兩份 |
 | 網站建置 artifact | Pages artifact | 1 天，只供 deploy job 使用，不是資料恢復來源 |

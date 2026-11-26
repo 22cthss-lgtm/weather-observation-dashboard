@@ -1,14 +1,13 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import DashboardPage from "./pages/DashboardPage";
 import ImagePage from "./pages/ImagePage";
 import { formatImageTime } from "./image-time";
+import { readPublicData } from "./test-data";
 
 // Integration fixture is the actual Fetcher output, never a replacement dataset.
-const sst = JSON.parse(readFileSync(resolve("public/data/images/sst/latest.json"), "utf8"));
+const sst = readPublicData("images/sst/latest.json");
 
 afterEach(() => {
   cleanup();

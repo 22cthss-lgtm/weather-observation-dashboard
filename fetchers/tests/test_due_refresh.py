@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from public_fixture import PUBLIC_DATA
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -84,7 +85,7 @@ class DueRefreshTests(unittest.TestCase):
     def seed(self, root):
         from src.pages_package import pack_snapshot
         from src.snapshots import export_snapshot
-        source = Path(__file__).resolve().parents[2] / 'frontend/public/data'
+        source = PUBLIC_DATA
         export_snapshot(source, root / 'seed')
         return pack_snapshot(root / 'seed', root / 'input.zip')
 

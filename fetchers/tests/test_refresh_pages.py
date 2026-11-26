@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from public_fixture import PUBLIC_DATA
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -12,7 +13,7 @@ class RefreshPagesTests(unittest.TestCase):
     def seed(self, root):
         from src.snapshots import export_snapshot
         from src.pages_package import pack_snapshot
-        export_snapshot(Path(__file__).resolve().parents[2] / 'frontend/public/data', root / 'snapshot')
+        export_snapshot(PUBLIC_DATA, root / 'snapshot')
         return pack_snapshot(root / 'snapshot', root / 'input.zip')
 
     def test_policy_requires_explicit_retention_and_exact_source(self):

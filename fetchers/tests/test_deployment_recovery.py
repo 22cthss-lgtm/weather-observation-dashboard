@@ -12,6 +12,7 @@ from src.due_refresh import prepare_due, load_policy
 from src.scheduling import default_tasks
 from src.pages_package import pack_snapshot, unpack_snapshot
 from src.snapshots import export_snapshot
+from public_fixture import PUBLIC_DATA
 
 
 class DeploymentRecoveryTests(unittest.TestCase):
@@ -19,7 +20,7 @@ class DeploymentRecoveryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
             root = Path(directory)
             now = datetime.now(timezone.utc)
-            export_snapshot(Path(__file__).resolve().parents[2]/'frontend/public/data', root/'seed')
+            export_snapshot(PUBLIC_DATA, root/'seed')
             base = pack_snapshot(root/'seed', root/'base.zip', now=now)
             selected = unpack_snapshot(root/'base.zip', base['sha256'], root/'base-data', now=now)
             online = {'state':'verified', 'marker':{'content_id': selected['content_id']},
@@ -104,7 +105,7 @@ class DeploymentRecoveryTests(unittest.TestCase):
     def test_older_seed_cannot_be_saved_with_fresh_timestamp_to_bypass_next_run(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
             root=Path(directory);now=datetime.now(timezone.utc)
-            export_snapshot(Path(__file__).resolve().parents[2]/'frontend/public/data',root/'seed')
+            export_snapshot(PUBLIC_DATA,root/'seed')
             base=pack_snapshot(root/'seed',root/'base.zip',now=now-timedelta(hours=2))
             def update(kind,images):
                 p=images/kind/'latest.json';data=json.loads(p.read_bytes());data['title']+=' changed'
@@ -118,7 +119,7 @@ class DeploymentRecoveryTests(unittest.TestCase):
     def test_unknown_online_baseline_cannot_save_timestamp_laundered_candidate(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
             root=Path(directory);now=datetime.now(timezone.utc)
-            export_snapshot(Path(__file__).resolve().parents[2]/'frontend/public/data',root/'seed')
+            export_snapshot(PUBLIC_DATA,root/'seed')
             base=pack_snapshot(root/'seed',root/'base.zip',now=now)
             def update(kind,images):
                 p=images/kind/'latest.json';data=json.loads(p.read_bytes());data['title']+=' changed'

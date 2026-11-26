@@ -65,6 +65,10 @@ htmlcov/
 .coverage
 .coverage.*
 
+# Local fetcher output for the dev server; publishing replaces it with the
+# verified snapshot. Fixed test data lives in fetchers/tests/fixtures/public-data/.
+frontend/public/data/
+
 # Logs and temporary files
 .runtime/
 *.log

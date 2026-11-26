@@ -1,14 +1,13 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import App from "./App";
 import { taipeiDate } from "./useCurrentImage";
+import { readPublicData } from "./test-data";
 
 const types = ["radar", "satellite", "rainfall"];
 const products = Object.fromEntries(types.map(type => [type,
-  JSON.parse(readFileSync(resolve(`public/data/images/${type}/latest.json`), "utf8"))]));
+  readPublicData(`images/${type}/latest.json`)]));
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
@@ -17,7 +16,7 @@ function serveRealOutputs(clock = products.radar.fetched_at) {
   vi.setSystemTime(new Date(clock));
   const request = vi.fn(async url => {
     if (!url.startsWith("/data/") || url.includes("..")) throw new Error("Only published JSON is supported");
-    const data = JSON.parse(readFileSync(resolve(`public${url}`), "utf8"));
+    const data = readPublicData(url.slice("/data/".length));
     return { ok: true, json: async () => data };
   });
   vi.stubGlobal("fetch", request);
@@ -41,7 +40,7 @@ test.each(types)("%s detail reads actual current-day Fetcher output", async type
   // source failures. Test this product's same-day inventory independently.
   serveRealOutputs(product.image_time);
   const date = product.image_time.slice(0, 10);
-  const history = JSON.parse(readFileSync(resolve(`public/data/images/${type}/history/${date}.json`), "utf8"));
+  const history = readPublicData(`images/${type}/history/${date}.json`);
   render(<MemoryRouter initialEntries={[`/images/${type}`]}><App /></MemoryRouter>);
   await screen.findByAltText(product.title);
   const options = await screen.findAllByRole("option");

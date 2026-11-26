@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from public_fixture import PUBLIC_DATA
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 NOW = datetime(2026, 10, 29, tzinfo=timezone.utc)
@@ -333,7 +334,7 @@ class CloudTests(unittest.TestCase):
         from src.cloud_snapshots import CloudSnapshots
         from src.pages_package import pack_snapshot
         from src.snapshots import export_snapshot
-        source = Path(__file__).resolve().parents[2] / 'frontend/public/data'
+        source = PUBLIC_DATA
         snapshot = self.root / 'snapshot'
         export_snapshot(source, snapshot)
         package_path = self.root / 'valid.zip'

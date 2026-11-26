@@ -13,6 +13,7 @@ from src.current_day import publish_current_history
 from src.history_reconciliation import history_scope
 from src.services.cwa_service import CWAService
 from src.snapshots import validate_resource,export_snapshot
+from public_fixture import PUBLIC_DATA
 
 NOW=datetime.fromisoformat('2026-11-03T12:00:00+08:00')
 POLICY={'interval_seconds':3600,'max_rechecks':3,'max_slots_per_run':12,'current_day_only':True}
@@ -22,10 +23,10 @@ class HistoryContractTests(unittest.TestCase):
         from src.pages_package import pack_snapshot,unpack_snapshot
         with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as root:
             root=Path(root)
-            export_snapshot(Path(__file__).resolve().parents[2]/'frontend/public/data',root/'seed')
+            export_snapshot(PUBLIC_DATA,root/'seed')
             original={p.relative_to(root/'seed/data').as_posix():p.read_bytes() for p in (root/'seed/data').rglob('*.json')}
-            # CI seeds public with the live candidate before running tests.
-            # Pick an absent fixture day instead of overwriting a live day.
+            # Pick a day the fixture has no history for, so the new v2 file
+            # never overwrites one of the fixed legacy files.
             clock=NOW
             while f'images/radar/history/{clock.date()}.json' in original:
                 clock-=timedelta(days=1)

@@ -1,16 +1,15 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import DashboardPage from "./pages/DashboardPage";
 import ImagePage from "./pages/ImagePage";
 import { formatImageTime } from "./image-time";
+import { readPublicData } from "./test-data";
 
 const types = ["temperature", "weather_chart", "850hpa", "tchp"];
-// Real outputs are deliberately required: a successful live update precedes this suite.
+// Real Fetcher outputs, kept fixed in fetchers/tests/fixtures/public-data (see ./test-data).
 const products = Object.fromEntries(types.map(type => [type,
-  JSON.parse(readFileSync(resolve(`public/data/images/${type}/latest.json`), "utf8"))
+  readPublicData(`images/${type}/latest.json`)
 ]));
 
 afterEach(() => {

@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import update_snapshot
+from public_fixture import PUBLIC_DATA
 
 
 class SnapshotCliTests(unittest.TestCase):
@@ -29,7 +30,7 @@ class SnapshotCliTests(unittest.TestCase):
         import shutil
         from src.snapshots import export_snapshot
         from src.snapshot_runner import current_snapshot
-        source = Path(__file__).resolve().parents[2] / 'frontend/public/data'
+        source = PUBLIC_DATA
         with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
             base = Path(directory)
             shutil.copytree(source, base / 'seed')
@@ -57,10 +58,25 @@ class SnapshotCliTests(unittest.TestCase):
             self.assertEqual(result, 1)
             self.assertEqual((base / 'store/current.json').read_bytes(), pointer_before)
 
-    def test_default_public_seed_cannot_contain_private_store(self):
-        with patch('dotenv.load_dotenv'), redirect_stderr(io.StringIO()):
-            with self.assertRaises(SystemExit):
-                update_snapshot.main(['--store', str(update_snapshot.ROOT / 'frontend/public/data/private-store')])
+    def test_store_cannot_be_inside_public_or_the_default_seed(self):
+        for store in (update_snapshot.ROOT / 'frontend/public/data/private-store', PUBLIC_DATA / 'private-store'):
+            with self.subTest(store=store), patch('dotenv.load_dotenv'), redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    update_snapshot.main(['--store', str(store)])
+            self.assertFalse(store.exists())
+
+    def test_first_run_without_seed_option_starts_from_the_tracked_fixture(self):
+        seen = []
+        report = {'publishable': False, 'products': {}, 'resources': {}}
+        def record(types, seed, store, update):
+            seen.append(seed)
+            return report
+
+        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory, \
+                patch('dotenv.load_dotenv'), patch.object(update_snapshot, 'run_candidate', side_effect=record), \
+                redirect_stdout(io.StringIO()):
+            update_snapshot.main(['--store', str(Path(directory) / 'store'), 'radar'])
+        self.assertEqual([path.resolve() for path in seen], [PUBLIC_DATA.resolve()])
 
     def test_direct_runner_rejects_overlapping_paths_before_writing(self):
         from src.snapshot_runner import run_candidate

@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from public_fixture import PUBLIC_DATA
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -16,7 +17,7 @@ class VersionedPackageTests(unittest.TestCase):
         from src.snapshots import export_snapshot
         with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
             base = Path(directory)
-            data = Path(__file__).resolve().parents[2] / 'frontend/public/data'
+            data = PUBLIC_DATA
             export_snapshot(data, base / 'snapshot')
             now = datetime(2026, 10, 29, tzinfo=timezone.utc)
             content = content_metadata(data, {}, '2026-10-20T00:00:00+00:00')
@@ -35,7 +36,7 @@ class VersionedPackageTests(unittest.TestCase):
         from zipfile import ZipFile
         with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as directory:
             base = Path(directory)
-            data = Path(__file__).resolve().parents[2] / 'frontend/public/data'
+            data = PUBLIC_DATA
             export_snapshot(data, base / 'snapshot')
             content = content_metadata(data, {}, '2026-10-20T00:00:00+00:00')
             pack_snapshot(base / 'snapshot', base / 'original.zip', valid_days=7, content=content)
